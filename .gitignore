@@ -1,0 +1,8 @@
+/__pycache__
+/.mypy_cache
+/.vscode
+mypy.ini
+/Resources/hey-snips/test*
+/Resources/hey-snips/node*
+/Resources/hey-snips/tmp.json
+/Resources/Plotting

@@ -1,0 +1,30 @@
+\begin{thebibliography}{3}
+\providecommand{\natexlab}[1]{#1}
+\providecommand{\url}[1]{\texttt{#1}}
+\expandafter\ifx\csname urlstyle\endcsname\relax
+  \providecommand{\doi}[1]{doi: #1}\else
+  \providecommand{\doi}{doi: \begingroup \urlstyle{rm}\Url}\fi
+
+\bibitem[Alemi et~al.(2017)Alemi, Machens, Denève, and
+  Slotine]{alemi2017learning}
+Alireza Alemi, Christian Machens, Sophie Denève, and Jean-Jacques Slotine.
+\newblock Learning arbitrary dynamics in efficient, balanced spiking networks
+  using local plasticity rules, 2017.
+
+\bibitem[Boerlin et~al.(2013)Boerlin, Machens, and Denève]{boerlin}
+M.~Boerlin, C.~K. Machens, and S.~Denève.
+\newblock {{P}redictive coding of dynamical variables in balanced spiking
+  networks}.
+\newblock \emph{PLoS Comput. Biol.}, 9\penalty0 (11):\penalty0 e1003258, 2013.
+
+\bibitem[Bourdoukan et~al.(2012)Bourdoukan, Barrett, Machens, and
+  Den\`{e}ve]{Bourdoukan:2012:LOS:2999325.2999390}
+Ralph Bourdoukan, David G.~T. Barrett, Christian~K. Machens, and Sophie
+  Den\`{e}ve.
+\newblock Learning optimal spike-based representations.
+\newblock In \emph{Proceedings of the 25th International Conference on Neural
+  Information Processing Systems - Volume 2}, NIPS'12, pages 2285--2293, USA,
+  2012. Curran Associates Inc.
+\newblock URL \url{http://dl.acm.org/citation.cfm?id=2999325.2999390}.
+
+\end{thebibliography}
