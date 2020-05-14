@@ -47,7 +47,7 @@ def my_loss(
     reg_l2_rec: float = 1.0,
     reg_diag_weights: float = 1.0,
     reg_bias: float = 1.0,
-    reg_l2_w_out : float = 10000.0
+    reg_l2_w_out : float = 1.0
 ) -> float:
     """
     Loss function for target versus output
@@ -84,13 +84,13 @@ def my_loss(
     w_res_norm = reg_l2_rec * jnp.mean(params["w_recurrent"] ** 2)
 
     # - Enforce uniform read-out weights
-    # loss_w_out = reg_l2_w_out * (jnp.sum(jnp.abs(params["w_out"] / jnp.linalg.norm(params["w_out"])) - 0.2  ))
+    loss_w_out = reg_l2_w_out * jnp.mean(params["w_out"]**2)
 
     # punish large biases
     loss_bias = reg_bias * jnp.mean(params['bias'] ** 2)
 
     # - Loss: target/output squared error, time constant constraint, recurrent weights norm, activation penalty
-    fLoss = mse + tau_loss + w_res_norm + max_tau_loss + loss_bias + loss_diag # + loss_w_out
+    fLoss = mse + tau_loss + w_res_norm + max_tau_loss + loss_bias + loss_diag + loss_w_out
 
     # - Return loss
     return fLoss
@@ -207,10 +207,6 @@ class RNN(BaseModel):
         ax5.set_prop_cycle(None)
         if not ts_tgt is None:
             ts_tgt.plot()
-
-        #plt.show(block=True)
-        fig.savefig("activity_snips_tanh.png", dpi=300)
-        plt.close('all')
 
     def predict(self, batch, evolve_hidden=True):
 
