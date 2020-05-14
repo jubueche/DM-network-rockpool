@@ -166,14 +166,10 @@ class HeySnipsNetworkADS(BaseModel):
             weights_in_realistic = D_realistic
             weights_out_realistic = D_realistic.T
             weights_fast_realistic = a*np.divide(weights_fast.T, v_thresh.ravel()).T # - Divide each row
-            weights_slow_realistic = a*np.divide(weights_slow.T, v_thresh.ravel()).T
 
             # - Reset is given by v_reset_target = b - a
             v_reset_target = b - a
             noise_std_realistic = 0.00
-
-            if(self.verbose > 0):
-                plot_matrices(weights_in_realistic, weights_slow_realistic, weights_fast_realistic, title_A="In", title_B="Slow recurrent", title_C="Fast Recurrent")
 
             self.net = NetworkADS.SpecifyNetwork(N=self.num_neurons,
                                             Nc=Nc,
@@ -181,7 +177,7 @@ class HeySnipsNetworkADS(BaseModel):
                                             weights_in=weights_in_realistic * self.tau_mem,
                                             weights_out= weights_out_realistic / 2,
                                             weights_fast= - weights_fast_realistic * self.tau_mem / tau_syn_fast,
-                                            weights_slow= weights_slow_realistic * self.tau_mem / 1e-3,
+                                            weights_slow = weights_slow,
                                             eta=eta,
                                             k=k,
                                             noise_std=noise_std_realistic,
@@ -193,7 +189,7 @@ class HeySnipsNetworkADS(BaseModel):
                                             tau_syn_r_fast=tau_syn_fast,
                                             tau_syn_r_slow=self.tau_slow,
                                             tau_syn_r_out=self.tau_out,
-                                            record=True,
+                                            record=True
                                             )
 
             self.best_val_acc = 0.0
@@ -273,8 +269,10 @@ class HeySnipsNetworkADS(BaseModel):
         b_eta = (total_num_iter/2) / np.log(100)
         c_eta = 0.0000001
         f_eta = lambda t,a_eta,b_eta : a_eta*np.exp(-t/b_eta) + c_eta
+
         if(self.verbose > 0):
-            plt.plot(np.arange(0,total_num_iter),f_eta(np.arange(0,total_num_iter),a_eta,b_eta)); plt.title("Decay schedule for eta"); plt.show()
+            plt.plot(np.arange(0,total_num_iter),f_eta(np.arange(0,total_num_iter),a_eta,b_eta),label="Square root")
+            plt.title("Decay schedule for eta"); plt.legend(); plt.show()
 
         time_horizon = 50
         recon_erros = np.ones((time_horizon,))
@@ -603,6 +601,8 @@ class HeySnipsNetworkADS(BaseModel):
 
 if __name__ == "__main__":
 
+    np.random.seed(42)
+
     # - Memory profiling
     tracemalloc.start()
 
@@ -684,3 +684,9 @@ if __name__ == "__main__":
     current, peak = tracemalloc.get_traced_memory()
     print(f"Current memory usage is {current / 10**6} MB; Peak was {peak / 10**6} MB; {peak / 10**9} GB")
     tracemalloc.stop()
+
+    # plt.subplot(311); plt.plot(np.arange(0,data_loader.train_set.data.shape[0]*len(self.track_dict['validation_recon_acc']),data_loader.train_set.data.shape[0]),self.track_dict['validation_recon_acc'],label="Recon error");
+    # plt.plot(np.arange(0,data_loader.train_set.data.shape[0]*len(self.track_dict['validation_recon_acc']),data_loader.train_set.data.shape[0]),1-np.asarray(self.track_dict['validation_acc']),label="Val. Error")
+    # plt.legend(); plt.xlabel("Epoch"); plt.xlim([0.0,total_num_iter]); plt.subplot(312);
+    # plt.plot(1-np.asarray(self.track_dict['training_acc']),label="Training error"); plt.plot(self.track_dict['training_recon_acc'],label="Training recon error"); plt.legend(); plt.xlim([0,total_num_iter]);
+    # plt.subplot(313); plt.plot(np.arange(0,total_num_iter),f_k(np.arange(0,total_num_iter)),label="k schedule"); plt.legend(); plt.xlabel("Num. signal iterations"); plt.show()

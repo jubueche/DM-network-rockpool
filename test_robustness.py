@@ -43,6 +43,7 @@ class HeySnipsNetworkADS(BaseModel):
                  tau_out,
                  num_val,
                  num_test,
+                 mismatch_std,
                  num_epochs,
                  threshold,
                  eta,
@@ -56,6 +57,7 @@ class HeySnipsNetworkADS(BaseModel):
         self.verbose = verbose
         self.fs = fs
         self.dt = 0.001
+        self.mismatch_std = mismatch_std
 
         self.num_val = num_val
         self.validation_step = validation_step
@@ -64,7 +66,6 @@ class HeySnipsNetworkADS(BaseModel):
         self.num_epochs = num_epochs
         self.threshold = threshold
 
-        self.N_filter = 51
 
         self.num_rate_neurons = 128 
         self.num_targets = len(labels)
@@ -99,58 +100,66 @@ class HeySnipsNetworkADS(BaseModel):
 
 
         # - Create NetworkADS
-        model_path_ads_net = "Resources/hey-snips/test_acc0.8471760797342193threshold0.7eta2.2077035344734782e-06val_acc0.86tau_slow0.07tau_out0.07num_neurons1024.json"
+        model_path_ads_net = "Resources/hey-snips/node_2_test_acc0.8631368631368631threshold0.7eta0.0001val_acc0.83tau_slow0.07tau_out0.07num_neurons1024.json"
 
         if(os.path.exists(model_path_ads_net)):
-            self.net = NetworkADS.load(model_path_ads_net)
+            self.net_mismatch_one = NetworkADS.load(model_path_ads_net)
+            self.net_mismatch_two = NetworkADS.load(model_path_ads_net)
             self.net_original = NetworkADS.load(model_path_ads_net)
 
-            N = self.net.lyrRes.size
-            Nc = self.net.lyrRes.out_size
+            N = self.net_mismatch_one.lyrRes.size
+            Nc = self.net_mismatch_one.lyrRes.out_size
 
             # - Test robustness: Use distribution for tau_fast, tau_out, tau_slow and V_thresh
-            mean_tau_slow = self.net.lyrRes.tau_syn_r_slow
-            mean_tau_fast = self.net.lyrRes.tau_syn_r_fast
-            mean_tau_out = self.net.lyrRes.tau_syn_r_out
-            mean_tau_mem = self.net.lyrRes.tau_mem
+            mean_tau_slow = self.net_mismatch_one.lyrRes.tau_syn_r_slow
+            mean_tau_fast = self.net_mismatch_one.lyrRes.tau_syn_r_fast
+            mean_tau_out = self.net_mismatch_one.lyrRes.tau_syn_r_out
+            mean_tau_mem = self.net_mismatch_one.lyrRes.tau_mem
 
-            self.net.lyrRes.tau_syn_r_slow = np.random.randn(N)*0.2*mean_tau_slow + mean_tau_slow
-            self.net.lyrRes.tau_syn_r_fast = np.random.randn(N)*0.2*mean_tau_fast + mean_tau_fast
-            self.net.lyrRes.tau_syn_r_out = np.random.randn(Nc)*0.2*mean_tau_out + mean_tau_out
-            self.net.lyrRes.tau_mem = np.random.randn(N)*0.2*mean_tau_mem + mean_tau_mem
-            # self.net.lyrRes.v_thresh = np.random.randn(N)*0.2*np.mean(self.net.lyrRes.v_thresh) + np.mean(self.net.lyrRes.v_thresh)
-
-            # self.net.lyrRes.weights_fast = np.zeros((N,N))
-            # self.net.lyrRes.weights = np.zeros((N,N))
+            # Apply first mismatch
+            self.net_mismatch_one.lyrRes.tau_syn_r_slow = np.abs(np.random.randn(N)*self.mismatch_std*mean_tau_slow + mean_tau_slow)
+            self.net_mismatch_one.lyrRes.tau_syn_r_fast = np.abs(np.random.randn(N)*self.mismatch_std*mean_tau_fast + mean_tau_fast)
+            self.net_mismatch_one.lyrRes.tau_syn_r_out = np.abs(np.random.randn(Nc)*self.mismatch_std*mean_tau_out + mean_tau_out)
+            self.net_mismatch_one.lyrRes.tau_mem = np.abs(np.random.randn(N)*self.mismatch_std*mean_tau_mem + mean_tau_mem)
+            self.net_mismatch_one.lyrRes.v_thresh = np.abs(np.random.randn(N)*self.mismatch_std*np.mean(self.net_mismatch_one.lyrRes.v_thresh) + np.mean(self.net_mismatch_one.lyrRes.v_thresh))
             
-            # Weights pruning
-
+            # Apply second mismatch
+            self.net_mismatch_two.lyrRes.tau_syn_r_slow = np.abs(np.random.randn(N)*self.mismatch_std*mean_tau_slow + mean_tau_slow)
+            self.net_mismatch_two.lyrRes.tau_syn_r_fast = np.abs(np.random.randn(N)*self.mismatch_std*mean_tau_fast + mean_tau_fast)
+            self.net_mismatch_two.lyrRes.tau_syn_r_out = np.abs(np.random.randn(Nc)*self.mismatch_std*mean_tau_out + mean_tau_out)
+            self.net_mismatch_two.lyrRes.tau_mem = np.abs(np.random.randn(N)*self.mismatch_std*mean_tau_mem + mean_tau_mem)
+            self.net_mismatch_two.lyrRes.v_thresh = np.abs(np.random.randn(N)*self.mismatch_std*np.mean(self.net_mismatch_two.lyrRes.v_thresh) + np.mean(self.net_mismatch_two.lyrRes.v_thresh))
 
             # - Plotting
             plt.subplot(511)
-            plt.hist(self.net.lyrRes.tau_syn_r_slow); plt.title("Tau slow")
+            plt.hist(self.net_mismatch_one.lyrRes.tau_syn_r_slow); plt.title("Tau slow")
             plt.subplot(512)
-            plt.hist(self.net.lyrRes.tau_syn_r_fast); plt.title("Tau fast")
+            plt.hist(self.net_mismatch_one.lyrRes.tau_syn_r_fast); plt.title("Tau fast")
             plt.subplot(513)
-            plt.hist(self.net.lyrRes.tau_syn_r_out); plt.title("Tau out")
+            plt.hist(self.net_mismatch_one.lyrRes.tau_syn_r_out); plt.title("Tau out")
             plt.subplot(514)
-            plt.hist(self.net.lyrRes.tau_mem); plt.title("Tau mem")
+            plt.hist(self.net_mismatch_one.lyrRes.tau_mem); plt.title("Tau mem")
             plt.subplot(515)
-            plt.plot(self.net.lyrRes.v_thresh); plt.title("V thresh")
+            plt.plot(self.net_mismatch_one.lyrRes.v_thresh); plt.title("V thresh")
             plt.tight_layout(); plt.show()
 
-            self.num_neurons = self.net.lyrRes.weights_fast.shape[0]
-            self.tau_slow = self.net.lyrRes.tau_syn_r_slow
-            self.tau_out = self.net.lyrRes.tau_syn_r_out
+            self.num_neurons = self.net_mismatch_one.lyrRes.weights_fast.shape[0]
+            self.tau_slow = self.net_mismatch_one.lyrRes.tau_syn_r_slow
+            self.tau_out = self.net_mismatch_one.lyrRes.tau_syn_r_out
             self.amplitude = 50 / mean_tau_mem
 
             plt.figure(figsize=(12,5))
-            plt.subplot(121)
-            plt.matshow(self.net.lyrRes.weights_slow, cmap="RdBu", fignum=False)
+            plt.subplot(141)
+            plt.matshow(self.net_mismatch_one.lyrRes.weights_slow, cmap="RdBu", fignum=False)
+            plt.subplot(142)
+            plt.matshow(self.net_mismatch_one.lyrRes.weights_fast, cmap="RdBu", fignum=False)
             plt.colorbar()
-            plt.subplot(122)
-            plt.hist(self.net.lyrRes.weights_slow.ravel(), bins=100)
+            plt.subplot(143)
+            plt.hist(self.net_mismatch_one.lyrRes.weights_slow.ravel(), bins=100)
             plt.title("Weight distribution of slow weights")
+            plt.subplot(144)
+            plt.hist(self.net_mismatch_one.lyrRes.weights_fast.ravel(), bins=100)
+            plt.title("Weight distribution of fast weights")
             plt.show()
 
             print("Loaded pretrained network from %s" % model_path_ads_net)
@@ -192,10 +201,17 @@ class HeySnipsNetworkADS(BaseModel):
 
     def test(self, data_loader, fn_metrics):
 
-        correct = 0
+        correct_mismatch_one = 0
+        correct_mismatch_two = 0
+        correct_perturbed = 0
         correct_original = 0
         correct_rate = 0
         count = 0
+        already_saved = False
+        t_start_suppress = 2.0
+        t_stop_suppress = 3.5
+        percentage_suppress = 0.5
+
         for batch_id, [batch, test_logger] in enumerate(data_loader.test_set()):
 
             if batch_id > self.num_test:
@@ -203,136 +219,194 @@ class HeySnipsNetworkADS(BaseModel):
 
             audio_raw = batch[0][0]
             (ts_spiking_in, ts_rate_net_target_dynamics, ts_rate_out) = self.get_data(audio_raw=audio_raw)
-            self.net.lyrRes.ts_target = ts_rate_net_target_dynamics
+            self.net_mismatch_one.lyrRes.ts_target = ts_rate_net_target_dynamics
+            self.net_mismatch_two.lyrRes.ts_target = ts_rate_net_target_dynamics
             self.net_original.lyrRes.ts_target = ts_rate_net_target_dynamics
-            val_sim = self.net.evolve(ts_input=ts_spiking_in, verbose=(self.verbose > 1))
-            val_sim_original = self.net_original.evolve(ts_input=ts_spiking_in, verbose=(self.verbose > 1))
+            val_sim_mismatch_one = self.net_mismatch_one.evolve(ts_input=ts_spiking_in, verbose=(self.verbose > 1))
+            val_sim_mismatch_two = self.net_mismatch_two.evolve(ts_input=ts_spiking_in, verbose=(self.verbose > 1))
+            val_sim_original = self.net_original.evolve(ts_input=ts_spiking_in, verbose=(self.verbose > 1)); self.net_original.reset_all()
+            # - Set the "suppress" fields, they are reset by reset_all()
+            self.net_original.lyrRes.t_start_suppress = t_start_suppress
+            self.net_original.lyrRes.t_stop_suppress = t_stop_suppress
+            self.net_original.lyrRes.percentage_suppress = percentage_suppress
+            val_sim_perturbed = self.net_original.evolve(ts_input=ts_spiking_in, verbose=(self.verbose > 1))
 
-            out_val = val_sim["output_layer"].samples.T
+            out_val_mismatch_one = val_sim_mismatch_one["output_layer"].samples.T
+            out_val_mismatch_two = val_sim_mismatch_two["output_layer"].samples.T
             out_val_original = val_sim_original["output_layer"].samples.T
+            out_val_perturbed = val_sim_perturbed["output_layer"].samples.T
 
-            self.net.reset_all()
+            self.net_mismatch_one.reset_all()
+            self.net_mismatch_two.reset_all()
             self.net_original.reset_all()
             
-            # - Compute the final classification output
-            final_out = out_val.T @ self.w_out
-            final_out = filter_1d(final_out, alpha=0.95)
+            # - Compute the final classification output for mismatch one
+            final_out_mismatch_one = out_val_mismatch_one.T @ self.w_out
+            final_out_mismatch_one = filter_1d(final_out_mismatch_one, alpha=0.95)
 
-            # - Compute the final classification output
+            # - Compute the final classification output for mismatch two
+            final_out_mismatch_two = out_val_mismatch_two.T @ self.w_out
+            final_out_mismatch_two = filter_1d(final_out_mismatch_two, alpha=0.95)
+
+            # - Compute the final classification output of original net
             final_out_original = out_val_original.T @ self.w_out
             final_out_original = filter_1d(final_out_original, alpha=0.95)
 
-            # check for threshold crossing
-            if ((final_out > self.threshold).any()):
-                predicted_label = 1
+            # - Compute the final classification output of original net
+            final_out_perturbed = out_val_perturbed.T @ self.w_out
+            final_out_perturbed = filter_1d(final_out_perturbed, alpha=0.95)
+
+            # - Check for threshold crossing of mismatch one
+            if ((final_out_mismatch_one > self.threshold).any()):
+                predicted_label_mismatch_one = 1
             else:
-                predicted_label = 0
+                predicted_label_mismatch_one = 0
+            # - Check for threshold crossing of mismatch two
+            if ((final_out_mismatch_two > self.threshold).any()):
+                predicted_label_mismatch_two = 1
+            else:
+                predicted_label_mismatch_two = 0
+            # - Check for crossing of rate net
             if((ts_rate_out.samples > 0.7).any()):
                 predicted_label_rate = 1
             else:
                 predicted_label_rate = 0
+            # - Check for crossing of the original net
             if ((final_out_original > self.threshold).any()):
                 predicted_label_original = 1
             else:
                 predicted_label_original = 0
+            # - Check for crossing of the perturbed net
+            if ((final_out_perturbed > self.threshold).any()):
+                predicted_label_perturbed = 1
+            else:
+                predicted_label_perturbed = 0
 
             tgt_label = batch[0][1]
-            if(predicted_label == tgt_label):
-                correct += 1
+            if(predicted_label_mismatch_one == tgt_label):
+                correct_mismatch_one += 1
+            if(predicted_label_mismatch_two == tgt_label):
+                correct_mismatch_two += 1
             if(predicted_label_rate == tgt_label):
                 correct_rate += 1
             if(predicted_label_original == tgt_label):
                 correct_original += 1
+            if(predicted_label_perturbed == tgt_label):
+                correct_perturbed += 1
             count += 1
 
-            # if(self.verbose > 0):
-            #     target_val = ts_rate_net_target_dynamics.samples.T
-            #     plot_num = 10
-            #     stagger = np.ones((plot_num, out_val.shape[1]))
-            #     for i in range(plot_num):
-            #         stagger[i,:] *= i*0.5
 
-            #     colors = [("C%d"%i) for i in range(2,plot_num+2)]
-            #     fig = plt.figure(figsize=(20,6))
-            #     ax0 = fig.add_subplot(411)
-            #     l1 = ax0.plot(np.linspace(0,out_val.shape[1]*self.dt,out_val.shape[1]), (stagger+out_val[0:plot_num,:]).T)
-            #     for line, color in zip(l1,colors):
-            #         line.set_color(color)
-            #     l2 = ax0.plot(np.linspace(0,target_val.shape[1]*self.dt,target_val.shape[1]), (stagger+target_val[0:plot_num,:]).T, linestyle="--")
-            #     for line, color in zip(l2,colors):
-            #         line.set_color(color)
-            #     ax0.set_title(r"Target vs reconstruction (Mismatch)")
-            #     lines = [l1[0],l2[0]]
-            #     ax0.legend(lines, ["Reconstruction", "Target"])
+            # - Save a bunch of data for plotting
+            if(tgt_label == 1 and predicted_label_mismatch_one == 1 and predicted_label_mismatch_two == 1 and predicted_label_rate == 1 and predicted_label_original == 1 and not already_saved):
+                already_saved = True
+                # - Save rate dynamics, recon dynamics_orig/m1/m2, rate output, spiking output_orig/m1/m2
+                with open('Resources/Plotting/Robustness/target_dynamics.npy', 'wb') as f:
+                    np.save(f, ts_rate_net_target_dynamics.samples.T)
+                with open('Resources/Plotting/Robustness/recon_dynamics_original.npy', 'wb') as f:
+                    np.save(f, out_val_original)
+                with open('Resources/Plotting/Robustness/recon_dynamics_mismatch_one.npy', 'wb') as f:
+                    np.save(f, out_val_mismatch_one)
+                with open('Resources/Plotting/Robustness/recon_dynamics_mismatch_two.npy', 'wb') as f:
+                    np.save(f, out_val_mismatch_two)
+                with open('Resources/Plotting/Robustness/recon_dynamics_perturbed.npy', 'wb') as f:
+                    np.save(f, out_val_perturbed)
+                with open('Resources/Plotting/Robustness/rate_output.npy', 'wb') as f:
+                    np.save(f, ts_rate_out.samples)
+                with open('Resources/Plotting/Robustness/spiking_output_original.npy', 'wb') as f:
+                    np.save(f, final_out_original)
+                with open('Resources/Plotting/Robustness/spiking_output_mismatch_one.npy', 'wb') as f:
+                    np.save(f, final_out_mismatch_one)
+                with open('Resources/Plotting/Robustness/spiking_output_mismatch_two.npy', 'wb') as f:
+                    np.save(f, final_out_mismatch_two)
+                with open('Resources/Plotting/Robustness/spiking_output_perturbed.npy', 'wb') as f:
+                    np.save(f, final_out_perturbed)
+                # - Create time base
+                times_filt = np.arange(0, len(audio_raw) / self.fs, 1/self.fs)
+                # - Create TSContinuos for rate_layer input
+                ts_audio_raw = TSContinuous(times_filt, audio_raw)
+                # - Get the butterworth input
+                filtered = self.lyr_filt.evolve(ts_audio_raw).samples
+                self.lyr_filt.reset_all()
+                with open('Resources/Plotting/Robustness/filtered_audio.npy', 'wb') as f:
+                    np.save(f, filtered)
+                
+                channels_original = val_sim_original["lyrRes"].channels[val_sim_original["lyrRes"].channels >= 0]
+                times_tmp_original = val_sim_original["lyrRes"].times[val_sim_original["lyrRes"].channels >= 0]
+                with open('Resources/Plotting/Robustness/spike_channels_original.npy', 'wb') as f:
+                    np.save(f, channels_original)
+                with open('Resources/Plotting/Robustness/spike_times_original.npy', 'wb') as f:
+                    np.save(f, times_tmp_original)
 
-            #     ax1 = fig.add_subplot(412)
-            #     ts_rate_out.plot()
-            #     ax1.set_title("Target output")
-            #     ax1.axhline(y=0.7)
-            #     ax1.set_ylim([-0.5,1.0])
+                channels_mismatch_one = val_sim_mismatch_one["lyrRes"].channels[val_sim_mismatch_one["lyrRes"].channels >= 0]
+                times_tmp_mismatch_one = val_sim_mismatch_one["lyrRes"].times[val_sim_mismatch_one["lyrRes"].channels >= 0]
+                with open('Resources/Plotting/Robustness/spike_channels_mismatch_one.npy', 'wb') as f:
+                    np.save(f, channels_mismatch_one)
+                with open('Resources/Plotting/Robustness/spike_times_mismatch_one.npy', 'wb') as f:
+                    np.save(f, times_tmp_mismatch_one)
 
-            #     ax2 = fig.add_subplot(413)
-            #     ax2.plot(np.linspace(0,len(final_out)*self.dt,len(final_out)), final_out, label='Mismatch', linestyle='--')
-            #     ax2.plot(np.linspace(0,len(final_out_original)*self.dt,len(final_out_original)), final_out_original, label='Original')
-            #     ax2.set_title("Spiking output")
-            #     ax2.axhline(y=self.threshold)
-            #     ax2.set_ylim([-0.5,1.0])
-            #     ax2.legend()
+                channels_mismatch_two = val_sim_mismatch_two["lyrRes"].channels[val_sim_mismatch_two["lyrRes"].channels >= 0]
+                times_tmp_mismatch_two = val_sim_mismatch_two["lyrRes"].times[val_sim_mismatch_two["lyrRes"].channels >= 0]
+                with open('Resources/Plotting/Robustness/spike_channels_mismatch_two.npy', 'wb') as f:
+                    np.save(f, channels_mismatch_two)
+                with open('Resources/Plotting/Robustness/spike_times_mismatch_two.npy', 'wb') as f:
+                    np.save(f, times_tmp_mismatch_two)
 
-            #     ax3 = fig.add_subplot(414)
-            #     ax3.plot(np.linspace(0,out_val.shape[1]*self.dt,out_val.shape[1]),np.sum((out_val-target_val)**2, axis=0) / out_val.shape[0], label="Mismatch")
-            #     ax3.plot(np.linspace(0,out_val_original.shape[1]*self.dt,out_val_original.shape[1]),np.sum((out_val_original-target_val)**2, axis=0) / out_val_original.shape[0], label="No mismatch")
-            #     ax3.legend()
-            #     ax3.set_title("MSE over time between spiking network and rate network dynamics")
-
-            #     plt.tight_layout()
-            #     # plt.draw()
-            #     # plt.waitforbuttonpress(0)
-            #     # plt.close(fig)
-            #     plt.show()
+                channels_perturbed = val_sim_perturbed["lyrRes"].channels[val_sim_perturbed["lyrRes"].channels >= 0]
+                times_tmp_perturbed = val_sim_perturbed["lyrRes"].times[val_sim_perturbed["lyrRes"].channels >= 0]
+                with open('Resources/Plotting/Robustness/spike_channels_perturbed.npy', 'wb') as f:
+                    np.save(f, channels_perturbed)
+                with open('Resources/Plotting/Robustness/spike_times_perturbed.npy', 'wb') as f:
+                    np.save(f, times_tmp_perturbed)
 
 
             target = batch[0][2]
             target_times = np.arange(0, len(target) / self.fs, 1/self.fs)
 
-            plt.clf()
-            plt.plot(np.arange(0,len(final_out)*self.dt, self.dt),final_out, label="Mismatch")
-            plt.plot(np.arange(0,len(final_out_original)*self.dt, self.dt),final_out_original, label="No mismatch")
-            plt.plot(target_times, target, label="Target")
-            plt.plot(np.arange(0,len(ts_rate_out.samples)*self.dt, self.dt),ts_rate_out.samples, label="Rate")
-            plt.axhline(y=self.threshold)
-            plt.ylim([-0.5,1.0])
-            plt.legend()
-            plt.draw()
-            plt.pause(0.001)
+            if(self.verbose > 0):
+                plt.clf()
+                plt.plot(np.arange(0,len(final_out_mismatch_one)*self.dt, self.dt),final_out_mismatch_one, label="Mismatch 1")
+                plt.plot(np.arange(0,len(final_out_mismatch_two)*self.dt, self.dt),final_out_mismatch_two, label="Mismatch 2")
+                plt.plot(np.arange(0,len(final_out_original)*self.dt, self.dt),final_out_original, label="No mismatch")
+                plt.plot(np.arange(0,len(final_out_perturbed)*self.dt, self.dt),final_out_perturbed, label="Perturbed")
+                plt.plot(target_times, target, label="Target")
+                plt.plot(np.arange(0,len(ts_rate_out.samples)*self.dt, self.dt),ts_rate_out.samples, label="Rate")
+                plt.axhline(y=self.threshold)
+                plt.ylim([-0.5,1.0])
+                plt.legend()
+                plt.draw()
+                plt.pause(0.001)
 
             print("--------------------------------")
             print("TESTING batch", batch_id)
-            print("True label", tgt_label, "Mismatch", predicted_label, "No mismatch", predicted_label_original, "Rate label", predicted_label_rate)
+            print("True label", tgt_label, "Mismatch-One", predicted_label_mismatch_one, "Mismatch-Two", predicted_label_mismatch_two, "No mismatch", predicted_label_original, "Rate label", predicted_label_rate)
             print("--------------------------------")
 
-            test_logger.add_predictions(pred_labels=[predicted_label], pred_target_signals=[ts_rate_out.samples])
+            test_logger.add_predictions(pred_labels=[predicted_label_mismatch_one], pred_target_signals=[ts_rate_out.samples])
             fn_metrics('test', test_logger)
 
-        test_acc = correct / count
+        test_acc_mismatch_one = correct_mismatch_one / count
+        test_acc_mismatch_two = correct_mismatch_two / count
         test_acc_original = correct_original / count
         test_acc_rate = correct_rate / count
-        print("Mismatch test accuracy is %.4f Original test accuracy is %.4f Rate network test accuracy is %.4f" % (test_acc, test_acc_original, test_acc_rate))
+        print("Mismatch 1 test accuracy is %.4f Mismatch 2 test accuracy is %.4f Original test accuracy is %.4f Rate network test accuracy is %.4f" % (test_acc_mismatch_one, test_acc_mismatch_two, test_acc_original, test_acc_rate))
 
 
 if __name__ == "__main__":
+
+    np.random.seed(42)
 
     parser = argparse.ArgumentParser(description='Learn classifier using pre-trained rate network')
     
     parser.add_argument('--verbose', default=0, type=int, help="Level of verbosity. Default=0. Range: 0 to 2")
     parser.add_argument('--threshold', default=0.7, type=float, help="Threshold for prediction")
     parser.add_argument('--num_test', default=100, type=float, help="Number of test samples")
+    parser.add_argument('--std', default=0.2, type=float, help="Percentage of mean for the mismatch standard deviation")
 
     args = vars(parser.parse_args())
     verbose = args['verbose']
     threshold = args['threshold']
     num_test = args['num_test']
-
+    mismatch_std = args['std']
 
     batch_size = 1
     percentage_data = 0.02
@@ -357,6 +431,7 @@ if __name__ == "__main__":
                                 tau_out=-1,
                                 num_val=-1,
                                 num_test=num_test,
+                                mismatch_std=mismatch_std,
                                 num_epochs=0,
                                 threshold=threshold,
                                 eta=-1,
