@@ -158,6 +158,12 @@ class HeySnipsNetworkADS(BaseModel):
             plt.tight_layout()
             plt.show()
 
+            plt.subplot(121)
+            plt.hist(self.net_discretized.lyrRes.weights_slow.ravel(), bins=2**num_bits)
+            plt.subplot(122)
+            plt.hist(self.net_original.lyrRes.weights_slow.ravel(), bins=50)
+            plt.show()
+
             # - Plotting
             plt.subplot(511)
             plt.hist(self.net_mismatch_one.lyrRes.tau_syn_r_slow); plt.title("Tau slow")
@@ -238,9 +244,9 @@ class HeySnipsNetworkADS(BaseModel):
         correct_rate = 0
         count = 0
         already_saved = False
-        t_start_suppress = 2.0
-        t_stop_suppress = 3.5
-        percentage_suppress = 0.5
+        t_start_suppress = 1.4
+        t_stop_suppress = 1.7
+        percentage_suppress = 0.2
 
         for batch_id, [batch, test_logger] in enumerate(data_loader.test_set()):
 
@@ -440,7 +446,7 @@ class HeySnipsNetworkADS(BaseModel):
 
 if __name__ == "__main__":
 
-    np.random.seed(42)
+    # np.random.seed(42)
 
     parser = argparse.ArgumentParser(description='Learn classifier using pre-trained rate network')
     

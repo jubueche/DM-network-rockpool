@@ -220,7 +220,6 @@ def bin_F(F_real, max_syn_per_neuron):
     F_new_discrete = np.zeros(F_real.shape)
     _, bin_edges = np.histogram(F_real.reshape((-1,1)), bins = 2*max_syn_per_neuron, range=(np.min(F_real),np.max(F_real)))
     F_new_discrete = np.digitize(F_real.ravel(), bins = bin_edges, right = True).reshape(F_new_discrete.shape) - max_syn_per_neuron
-
     return F_new_discrete
 
 def filter_1d(data, alpha = 0.9):

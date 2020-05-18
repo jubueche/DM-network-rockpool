@@ -58,9 +58,9 @@ if(PLOT_ROBUSTNESS):
     with open('Resources/Plotting/Robustness/rate_output.npy', 'rb') as f:
         rate_output = np.load(f)
 
-    t_start = 2.0
+    t_start = 1.0
     t_start_dynamics = t_start
-    t_stop = 3.0
+    t_stop = 2.7
     t_start_spikes = t_start
     t_stop_spikes = t_stop
     fig = plt.figure(figsize=(10,6.3),constrained_layout=True)
@@ -178,12 +178,26 @@ if(PLOT_ROBUSTNESS):
     ax11.set_xlim([t_start_spikes,t_stop_spikes])
     ax11.set_ylim([0,N])
 
-    ax12 = fig.add_subplot(gs[8:10,3])
+    ax12 = fig.add_subplot(gs[8:9,3])
     ax12.plot(np.arange(0,duration,duration/len(rate_output)), rate_output, color="C2", label=r"$\mathbf{y}_{\textnormal{rate}}$")
     ax12.plot(np.arange(0,duration,duration/len(final_out_perturbed)), final_out_perturbed, color="C4", linestyle="--", label=r"$\mathbf{y}_{\textnormal{spiking}}$")
     ax12.axhline(y=0.7, label=r"Threshold")
     ax12.legend(frameon=False, loc=1, prop={'size': 5})
     ax12.set_ylim([-0.4,1.0])
+
+    # - Compute MSE for perturbed sample
+    mse = np.sum((target_dynamics-recon_dynamics_perturbed)**2,axis=1)
+    mse_original = np.sum((target_dynamics-recon_dynamics_original)**2,axis=1)
+    ax13 = fig.add_subplot(gs[9:10,3])
+    t_mse = np.arange(0,duration,duration/len(mse))
+    l1 = ax13.plot(t_mse[(t_mse > t_start) & (t_mse < t_stop)], mse[(t_mse > t_start) & (t_mse < t_stop)], color="C2",linestyle="--")
+    l2 = ax13.plot(t_mse[(t_mse > t_start) & (t_mse < t_stop)], mse_original[(t_mse > t_start) & (t_mse < t_stop)], color="C4")
+    lines = [l1[0],l2[0]]
+    ax13.legend(lines, [r"MSE Perturbed", r"MSE Original"], loc=0, prop={'size': 5})
+    leg = ax13.get_legend()
+    leg.legendHandles[0].set_color('black')
+    leg.legendHandles[1].set_color('black')
+    ax13.set_ylabel(r"MSE")
 
     plt.show()
 

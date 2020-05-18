@@ -48,6 +48,8 @@ class HeySnipsNetworkADS(BaseModel):
                  fs=16000.,
                  verbose=0,
                  dry_run=False,
+                 discretize=-1,
+                 discretize_dynapse=False,
                  node_id=1,
                  name="Snips ADS",
                  version="1.0"):
@@ -167,6 +169,8 @@ class HeySnipsNetworkADS(BaseModel):
             weights_out_realistic = D_realistic.T
             weights_fast_realistic = a*np.divide(weights_fast.T, v_thresh.ravel()).T # - Divide each row
 
+            weights_fast_realistic = np.zeros((self.num_neurons,self.num_neurons))
+
             # - Reset is given by v_reset_target = b - a
             v_reset_target = b - a
             noise_std_realistic = 0.00
@@ -189,6 +193,8 @@ class HeySnipsNetworkADS(BaseModel):
                                             tau_syn_r_fast=tau_syn_fast,
                                             tau_syn_r_slow=self.tau_slow,
                                             tau_syn_r_out=self.tau_out,
+                                            discretize=discretize,
+                                            discretize_dynapse=discretize_dynapse,
                                             record=True
                                             )
 
@@ -620,6 +626,8 @@ if __name__ == "__main__":
     parser.add_argument('--dry-run', default=False, action='store_true', help="Performs dry run of the simulation without doing any computation")
     parser.add_argument('--node-id', default=1, type=int, help="Node-ID")
     parser.add_argument('--percentage-data', default=0.02, type=float, help="Percentage of total training data used. Example: 0.02 is 2%.")
+    parser.add_argument('--discretize', default=-1, type=int, help="Number of total different synaptic weights. -1 means no discretization. 8 means 3-bit precision.")
+    parser.add_argument('--discretize-dynapse', default=False, action='store_true', help="Respect constraint of DYNAP-SE of having only 64 synapses per neuron. --discretize must not be -1.")
 
     args = vars(parser.parse_args())
     num = args['num']
@@ -634,6 +642,10 @@ if __name__ == "__main__":
     dry_run = args['dry_run']
     node_id = args['node_id']
     percentage_data = args['percentage_data']
+    discretize_dynapse = args['discretize_dynapse']
+    discretize = args['discretize']
+
+    assert((not discretize_dynapse) or (discretize_dynapse and (discretize > 0))), "If --discretize-dynapse is specified, please choose a max. number of synapses per connection using the --discretize [int] field."
 
     batch_size = 1
     balance_ratio = 1.0
@@ -642,6 +654,7 @@ if __name__ == "__main__":
     experiment = HeySnipsDEMAND(batch_size=batch_size,
                                 percentage=percentage_data,
                                 snr=snr,
+                                randomize_after_epoch=True,
                                 is_tracking=False,
                                 one_hot=False)
 
@@ -660,6 +673,8 @@ if __name__ == "__main__":
                                 eta=eta,
                                 verbose=verbose,
                                 dry_run=dry_run,
+                                discretize=discretize,
+                                discretize_dynapse=discretize_dynapse,
                                 node_id=node_id)
 
     experiment.set_model(model)
