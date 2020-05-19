@@ -61,10 +61,12 @@ if(PLOT_ROBUSTNESS):
     t_start = 1.0
     t_start_dynamics = t_start
     t_stop = 2.7
-    t_start_spikes = t_start
-    t_stop_spikes = t_stop
-    fig = plt.figure(figsize=(10,6.3),constrained_layout=True)
-    gs = fig.add_gridspec(10, 4) # Height ratio is 4 : 4 : 2
+    t_start_spikes = 1.3
+    t_stop_spikes = 1.8
+    t_start_perturbed_final = 1.0
+    t_stop_perturbed_final = 2.7
+    fig = plt.figure(figsize=(6,5.12),constrained_layout=True)
+    gs = fig.add_gridspec(10, 8) # Height ratio is 4 : 4 : 2
     # - First row will be reconstructed dynamics vs. target dynamics
     plot_num = 10
     stagger_target_dyn = np.ones((target_dynamics.shape[0],plot_num))
@@ -76,7 +78,7 @@ if(PLOT_ROBUSTNESS):
     recon_dynamics_mismatch_two[:,:plot_num] += stagger_target_dyn
     recon_dynamics_perturbed[:,:plot_num] += stagger_target_dyn
     colors = [("C%d"%i) for i in range(2,plot_num+2)]
-    ax1 = fig.add_subplot(gs[:4,0])
+    ax1 = fig.add_subplot(gs[:4,:2])
     ax1.set_title(r"Original")
     l1 = ax1.plot(time_dynamics_original[(time_dynamics_original > t_start_dynamics) & (time_dynamics_original < t_stop)], target_dynamics[(time_dynamics_original > t_start_dynamics) & (time_dynamics_original < t_stop),:plot_num], linestyle="--")
     l2 = ax1.plot(time_dynamics_original[(time_dynamics_original > t_start_dynamics) & (time_dynamics_original < t_stop)], recon_dynamics_original[(time_dynamics_original > t_start_dynamics) & (time_dynamics_original < t_stop),:plot_num])
@@ -89,10 +91,9 @@ if(PLOT_ROBUSTNESS):
     leg = ax1.get_legend()
     leg.legendHandles[0].set_color('black')
     leg.legendHandles[1].set_color('black')
-    # ax1.axes.get_yaxis().set_visible(False)
-    ax1.set_ylabel(r"\textbf{A) Reconstructed Dynamics}")
+    ax1.set_ylabel(r"\textbf{A)}")
 
-    ax2 = fig.add_subplot(gs[:4,1])
+    ax2 = fig.add_subplot(gs[:4,2:4])
     ax2.set_title(r"Mismatch 1")
     l1 = ax2.plot(time_dynamics_mismatch_one[(time_dynamics_mismatch_one > t_start_dynamics) & (time_dynamics_mismatch_one < t_stop)], target_dynamics[(time_dynamics_mismatch_one > t_start_dynamics) & (time_dynamics_mismatch_one < t_stop),:plot_num], linestyle="--")
     l2 = ax2.plot(time_dynamics_mismatch_one[(time_dynamics_mismatch_one > t_start_dynamics) & (time_dynamics_mismatch_one < t_stop)], recon_dynamics_mismatch_one[(time_dynamics_mismatch_one > t_start_dynamics) & (time_dynamics_mismatch_one < t_stop),:plot_num])
@@ -100,14 +101,9 @@ if(PLOT_ROBUSTNESS):
         line.set_color(color)
     for line, color in zip(l2,colors):
         line.set_color(color)
-    lines = [l1[0],l2[0]]
-    ax2.legend(lines, [r"$\mathbf{x}$", r"$\tilde{\mathbf{x}}$"], loc=0, prop={'size': 5})
-    leg = ax2.get_legend()
-    leg.legendHandles[0].set_color('black')
-    leg.legendHandles[1].set_color('black')
     ax2.axes.get_yaxis().set_visible(False)
 
-    ax3 = fig.add_subplot(gs[:4,2])
+    ax3 = fig.add_subplot(gs[:4,4:6])
     ax3.set_title(r"Mismatch 2")
     l1 = ax3.plot(time_dynamics_mismatch_two[(time_dynamics_mismatch_two > t_start_dynamics) & (time_dynamics_mismatch_two < t_stop)], target_dynamics[(time_dynamics_mismatch_two > t_start_dynamics) & (time_dynamics_mismatch_two < t_stop),:plot_num], linestyle="--")
     l2 = ax3.plot(time_dynamics_mismatch_two[(time_dynamics_mismatch_two > t_start_dynamics) & (time_dynamics_mismatch_two < t_stop)], recon_dynamics_mismatch_two[(time_dynamics_mismatch_two > t_start_dynamics) & (time_dynamics_mismatch_two < t_stop),:plot_num])
@@ -115,50 +111,47 @@ if(PLOT_ROBUSTNESS):
         line.set_color(color)
     for line, color in zip(l2,colors):
         line.set_color(color)
-    lines = [l1[0],l2[0]]
-    ax3.legend(lines, [r"$\mathbf{x}$", r"$\tilde{\mathbf{x}}$"], loc=0, prop={'size': 5})
-    leg = ax3.get_legend()
-    leg.legendHandles[0].set_color('black')
-    leg.legendHandles[1].set_color('black')
     ax3.axes.get_yaxis().set_visible(False)
 
  
-    ax4 = fig.add_subplot(gs[4:8,0])
-    ax4.scatter(spike_times_original[(spike_times_original > t_start_spikes) & (spike_times_original < t_stop_spikes)], spike_channels_original[(spike_times_original > t_start_spikes) & (spike_times_original < t_stop_spikes)])
-    ax4.set_ylabel(r"\textbf{B) Population spikes")
+    ax4 = fig.add_subplot(gs[4:8,:2])
+    ax4.scatter(spike_times_original[(spike_times_original > t_start_spikes) & (spike_times_original < t_stop_spikes)], spike_channels_original[(spike_times_original > t_start_spikes) & (spike_times_original < t_stop_spikes)],color='k')
+    ax4.set_ylabel(r"\textbf{B)}")
     ax4.set_xlim([t_start_spikes,t_stop_spikes])
 
-    ax5 = fig.add_subplot(gs[4:8,1])
-    ax5.scatter(spike_times_mismatch_one[(spike_times_mismatch_one > t_start_spikes) & (spike_times_mismatch_one < t_stop_spikes)], spike_channels_mismatch_one[(spike_times_mismatch_one > t_start_spikes) & (spike_times_mismatch_one < t_stop_spikes)])
+    ax5 = fig.add_subplot(gs[4:8,2:4])
+    ax5.scatter(spike_times_mismatch_one[(spike_times_mismatch_one > t_start_spikes) & (spike_times_mismatch_one < t_stop_spikes)], spike_channels_mismatch_one[(spike_times_mismatch_one > t_start_spikes) & (spike_times_mismatch_one < t_stop_spikes)],color='k')
     ax5.set_xlim([t_start_spikes,t_stop_spikes])
+    ax5.axes.get_yaxis().set_visible(False)
 
-    ax6 = fig.add_subplot(gs[4:8,2])
-    ax6.scatter(spike_times_mismatch_two[(spike_times_mismatch_two > t_start_spikes) & (spike_times_mismatch_two < t_stop_spikes)], spike_channels_mismatch_two[(spike_times_mismatch_two > t_start_spikes) & (spike_times_mismatch_two < t_stop_spikes)])
+    ax6 = fig.add_subplot(gs[4:8,4:6])
+    ax6.scatter(spike_times_mismatch_two[(spike_times_mismatch_two > t_start_spikes) & (spike_times_mismatch_two < t_stop_spikes)], spike_channels_mismatch_two[(spike_times_mismatch_two > t_start_spikes) & (spike_times_mismatch_two < t_stop_spikes)],color='k')
     ax6.set_xlim([t_start_spikes,t_stop_spikes])
+    ax6.axes.get_yaxis().set_visible(False)
 
-    ax7 = fig.add_subplot(gs[8:10,0])
+    ax7 = fig.add_subplot(gs[8:10,:2])
     ax7.plot(np.arange(0,duration,duration/len(rate_output)), rate_output, color="C2", label=r"$\mathbf{y}_{\textnormal{rate}}$")
     ax7.plot(np.arange(0,duration,duration/len(final_out_original)), final_out_original, color="C4", linestyle="--", label=r"$\mathbf{y}_{\textnormal{spiking}}$")
     ax7.axhline(y=0.7, label=r"Threshold")
     ax7.legend(frameon=False, loc=1, prop={'size': 5})
     ax7.set_ylim([-0.4,1.0])
-    ax7.set_ylabel(r"\textbf{C) Classification of true sample")
+    ax7.set_ylabel(r"\textbf{C)}")
 
-    ax8 = fig.add_subplot(gs[8:10,1])
+    ax8 = fig.add_subplot(gs[8:10,2:4])
     ax8.plot(np.arange(0,duration,duration/len(rate_output)), rate_output, color="C2", label=r"$\mathbf{y}_{\textnormal{rate}}$")
     ax8.plot(np.arange(0,duration,duration/len(final_out_mismatch_one)), final_out_mismatch_one, color="C4", linestyle="--", label=r"$\mathbf{y}_{\textnormal{spiking}}$")
     ax8.axhline(y=0.7, label=r"Threshold")
-    ax8.legend(frameon=False, loc=1, prop={'size': 5})
     ax8.set_ylim([-0.4,1.0])
+    ax8.axes.get_yaxis().set_visible(False)
 
-    ax9 = fig.add_subplot(gs[8:10,2])
+    ax9 = fig.add_subplot(gs[8:10,4:6])
     ax9.plot(np.arange(0,duration,duration/len(rate_output)), rate_output, color="C2", label=r"$\mathbf{y}_{\textnormal{rate}}$")
     ax9.plot(np.arange(0,duration,duration/len(final_out_mismatch_two)), final_out_mismatch_two, color="C4", linestyle="--", label=r"$\mathbf{y}_{\textnormal{spiking}}$")
     ax9.axhline(y=0.7, label=r"Threshold")
-    ax9.legend(frameon=False, loc=1, prop={'size': 5})
     ax9.set_ylim([-0.4,1.0])
+    ax9.axes.get_yaxis().set_visible(False)
 
-    ax10 = fig.add_subplot(gs[:4,3])
+    ax10 = fig.add_subplot(gs[:4,6:])
     ax10.set_title(r"Perturbation")
     l1 = ax10.plot(time_dynamics_perturbed[(time_dynamics_perturbed > t_start_dynamics) & (time_dynamics_perturbed < t_stop)], target_dynamics[(time_dynamics_perturbed > t_start_dynamics) & (time_dynamics_perturbed < t_stop),:plot_num], linestyle="--")
     l2 = ax10.plot(time_dynamics_perturbed[(time_dynamics_perturbed > t_start_dynamics) & (time_dynamics_perturbed < t_stop)], recon_dynamics_perturbed[(time_dynamics_perturbed > t_start_dynamics) & (time_dynamics_perturbed < t_stop),:plot_num])
@@ -166,39 +159,48 @@ if(PLOT_ROBUSTNESS):
         line.set_color(color)
     for line, color in zip(l2,colors):
         line.set_color(color)
-    lines = [l1[0],l2[0]]
-    ax10.legend(lines, [r"$\mathbf{x}$", r"$\tilde{\mathbf{x}}$"], loc=0, prop={'size': 5})
-    leg = ax10.get_legend()
-    leg.legendHandles[0].set_color('black')
-    leg.legendHandles[1].set_color('black')
+    ax10.axvline(x=1.4, color='r')
+    ax10.axvline(x=1.7, color='r')
     ax10.axes.get_yaxis().set_visible(False)
 
-    ax11 = fig.add_subplot(gs[4:8,3])
-    ax11.scatter(spike_times_perturbed[(spike_times_perturbed > t_start_spikes) & (spike_times_perturbed < t_stop_spikes)], spike_channels_perturbed[(spike_times_perturbed > t_start_spikes) & (spike_times_perturbed < t_stop_spikes)])
+    ax11 = fig.add_subplot(gs[4:8,6:])
+    ax11.scatter(spike_times_perturbed[(spike_times_perturbed > t_start_spikes) & (spike_times_perturbed < t_stop_spikes)], spike_channels_perturbed[(spike_times_perturbed > t_start_spikes) & (spike_times_perturbed < t_stop_spikes)],color='k')
     ax11.set_xlim([t_start_spikes,t_stop_spikes])
-    ax11.set_ylim([0,N])
+    ax11.axvline(x=1.4, color='r')
+    ax11.axvline(x=1.7, color='r')
+    ax11.axes.get_yaxis().set_visible(False)
 
-    ax12 = fig.add_subplot(gs[8:9,3])
-    ax12.plot(np.arange(0,duration,duration/len(rate_output)), rate_output, color="C2", label=r"$\mathbf{y}_{\textnormal{rate}}$")
-    ax12.plot(np.arange(0,duration,duration/len(final_out_perturbed)), final_out_perturbed, color="C4", linestyle="--", label=r"$\mathbf{y}_{\textnormal{spiking}}$")
+    ax12 = fig.add_subplot(gs[8:,6])
+    tmp_times = np.arange(0,duration,duration/len(rate_output))
+    ax12.plot(tmp_times[(tmp_times > t_start_perturbed_final) & (tmp_times < t_stop_perturbed_final)], rate_output[(tmp_times > t_start_perturbed_final) & (tmp_times < t_stop_perturbed_final)], color="C2", label=r"$\mathbf{y}_{\textnormal{rate}}$")
+    ax12.plot(tmp_times[(tmp_times > t_start_perturbed_final) & (tmp_times < t_stop_perturbed_final)], final_out_perturbed[(tmp_times > t_start_perturbed_final) & (tmp_times < t_stop_perturbed_final)], color="C4", linestyle="--", label=r"$\mathbf{y}_{\textnormal{spiking}}$")
     ax12.axhline(y=0.7, label=r"Threshold")
-    ax12.legend(frameon=False, loc=1, prop={'size': 5})
     ax12.set_ylim([-0.4,1.0])
+    ax12.axvline(x=1.4, color='r')
+    ax12.axvline(x=1.7, color='r')
+    ax12.axes.get_yaxis().set_visible(False)
+    ax12.axes.get_xaxis().set_visible(False)
 
     # - Compute MSE for perturbed sample
     mse = np.sum((target_dynamics-recon_dynamics_perturbed)**2,axis=1)
     mse_original = np.sum((target_dynamics-recon_dynamics_original)**2,axis=1)
-    ax13 = fig.add_subplot(gs[9:10,3])
+    ax13 = fig.add_subplot(gs[8:,7])
     t_mse = np.arange(0,duration,duration/len(mse))
-    l1 = ax13.plot(t_mse[(t_mse > t_start) & (t_mse < t_stop)], mse[(t_mse > t_start) & (t_mse < t_stop)], color="C2",linestyle="--")
-    l2 = ax13.plot(t_mse[(t_mse > t_start) & (t_mse < t_stop)], mse_original[(t_mse > t_start) & (t_mse < t_stop)], color="C4")
+    l1 = ax13.plot(t_mse[(t_mse > t_start_spikes) & (t_mse < t_stop_spikes)], mse[(t_mse > t_start_spikes) & (t_mse < t_stop_spikes)], color="C2")
+    l2 = ax13.plot(t_mse[(t_mse > t_start_spikes) & (t_mse < t_stop_spikes)], mse_original[(t_mse > t_start_spikes) & (t_mse < t_stop_spikes)], color="C4",linestyle="--")
     lines = [l1[0],l2[0]]
-    ax13.legend(lines, [r"MSE Perturbed", r"MSE Original"], loc=0, prop={'size': 5})
+    ax13.legend(lines, [r"Perturbed", r"Original"], loc=0, frameon=False, prop={'size': 3})
     leg = ax13.get_legend()
     leg.legendHandles[0].set_color('black')
     leg.legendHandles[1].set_color('black')
-    ax13.set_ylabel(r"MSE")
+    ax13.set_title(r"MSE")
+    for tick in ax13.xaxis.get_major_ticks():
+        tick.label.set_fontsize(8)
+    ax13.axvline(x=1.4, color='r')
+    ax13.axvline(x=1.7, color='r')
+    ax13.axes.get_yaxis().set_visible(False)
 
+    plt.savefig("Latex/figures/figure4.png", dpi=1200)
     plt.show()
 
 else:

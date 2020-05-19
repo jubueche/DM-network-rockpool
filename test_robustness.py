@@ -33,10 +33,6 @@ absolute_path = os.path.abspath(__file__)
 directory_name = os.path.dirname(absolute_path)
 os.chdir(directory_name)
 
-def discretize(W, base_weight):
-    tmp = np.round(W / base_weight)
-    return base_weight*tmp, tmp
-
 class HeySnipsNetworkADS(BaseModel):
     def __init__(self,
                  labels,
@@ -104,13 +100,16 @@ class HeySnipsNetworkADS(BaseModel):
 
 
         # - Create NetworkADS
-        model_path_ads_net = "Resources/hey-snips/node_2_test_acc0.8631368631368631threshold0.7eta0.0001val_acc0.83tau_slow0.07tau_out0.07num_neurons1024.json"
+        model_path_ads_net = "Resources/CloudModels/node_1_test_acc0.8401598401598401threshold0.7eta0.0001val_acc0.86tau_slow0.07tau_out0.07num_neurons1024.json"
+        model_path_ads_net_3bit = "Resources/CloudModels/node_1_test_acc0.8401598401598401threshold0.7eta0.0001val_acc0.86tau_slow0.07tau_out0.07num_neurons1024.json"
+        model_path_ads_net_4bit = "Resources/CloudModels/node_1_test_acc0.8401598401598401threshold0.7eta0.0001val_acc0.86tau_slow0.07tau_out0.07num_neurons1024.json"
 
         if(os.path.exists(model_path_ads_net)):
             self.net_mismatch_one = NetworkADS.load(model_path_ads_net)
             self.net_mismatch_two = NetworkADS.load(model_path_ads_net)
             self.net_original = NetworkADS.load(model_path_ads_net)
-            self.net_discretized = NetworkADS.load(model_path_ads_net)
+            self.net_discretized_4_bit = NetworkADS.load(model_path_ads_net_4bit)
+            self.net_discretized_3_bit = NetworkADS.load(model_path_ads_net_3bit)
 
             N = self.net_mismatch_one.lyrRes.size
             Nc = self.net_mismatch_one.lyrRes.out_size
@@ -135,31 +134,8 @@ class HeySnipsNetworkADS(BaseModel):
             self.net_mismatch_two.lyrRes.tau_mem = np.abs(np.random.randn(N)*self.mismatch_std*mean_tau_mem + mean_tau_mem)
             self.net_mismatch_two.lyrRes.v_thresh = np.abs(np.random.randn(N)*self.mismatch_std*np.mean(self.net_mismatch_two.lyrRes.v_thresh) + np.mean(self.net_mismatch_two.lyrRes.v_thresh))
 
-            # - Calculate the base weight from the number of bits available and the slow recurrent connections
-            self.base_weight = (np.max(self.net_original.lyrRes.weights_slow)-np.min(self.net_original.lyrRes.weights_slow))/2**num_bits
-
-            print("Number of bits available is", num_bits, "Calculated base weight is",self.base_weight)
-
-            # - Apply discretization to the weights
-            self.net_discretized.lyrRes.weights_slow, num_synapses = discretize(self.net_original.lyrRes.weights_slow, self.base_weight)
-
-            fig = plt.figure(figsize=(10,6.3),constrained_layout=True)
-            gs = fig.add_gridspec(3, 2)
-            ax1 = fig.add_subplot(gs[:1,:])
-            ax1.plot(np.sum(np.abs(num_synapses), axis=1))
-            ax1.set_title("Synapses / neuron")
-            ax1.set_xlabel("Neuron ID")
-            ax2 = fig.add_subplot(gs[1:,0])
-            ax2.matshow(self.net_discretized.lyrRes.weights_slow, cmap="RdBu")
-            ax2.set_title("Discretised weights")
-            ax3 = fig.add_subplot(gs[1:,1])
-            ax3.matshow(self.net_original.lyrRes.weights_slow, cmap="RdBu")
-            ax3.set_title("Original weights")
-            plt.tight_layout()
-            plt.show()
-
             plt.subplot(121)
-            plt.hist(self.net_discretized.lyrRes.weights_slow.ravel(), bins=2**num_bits)
+            plt.hist(self.net_discretized_4_bit.lyrRes.weights_slow.ravel(), bins=2**num_bits)
             plt.subplot(122)
             plt.hist(self.net_original.lyrRes.weights_slow.ravel(), bins=50)
             plt.show()
@@ -240,7 +216,8 @@ class HeySnipsNetworkADS(BaseModel):
         correct_mismatch_two = 0
         correct_perturbed = 0
         correct_original = 0
-        correct_discretized = 0
+        correct_discretized_4_bit = 0
+        correct_discretized_3_bit = 0
         correct_rate = 0
         count = 0
         already_saved = False
@@ -257,11 +234,13 @@ class HeySnipsNetworkADS(BaseModel):
             (ts_spiking_in, ts_rate_net_target_dynamics, ts_rate_out) = self.get_data(audio_raw=audio_raw)
             self.net_mismatch_one.lyrRes.ts_target = ts_rate_net_target_dynamics
             self.net_mismatch_two.lyrRes.ts_target = ts_rate_net_target_dynamics
-            self.net_discretized.lyrRes.ts_target = ts_rate_net_target_dynamics
+            self.net_discretized_4_bit.lyrRes.ts_target = ts_rate_net_target_dynamics
+            self.net_discretized_3_bit.lyrRes.ts_target = ts_rate_net_target_dynamics
             self.net_original.lyrRes.ts_target = ts_rate_net_target_dynamics
             val_sim_mismatch_one = self.net_mismatch_one.evolve(ts_input=ts_spiking_in, verbose=(self.verbose > 1))
             val_sim_mismatch_two = self.net_mismatch_two.evolve(ts_input=ts_spiking_in, verbose=(self.verbose > 1))
-            val_sim_discretized = self.net_discretized.evolve(ts_input=ts_spiking_in, verbose=(self.verbose > 1))
+            val_sim_discretized_4_bit = self.net_discretized_4_bit.evolve(ts_input=ts_spiking_in, verbose=(self.verbose > 1))
+            val_sim_discretized_3_bit = self.net_discretized_3_bit.evolve(ts_input=ts_spiking_in, verbose=(self.verbose > 1))
             val_sim_original = self.net_original.evolve(ts_input=ts_spiking_in, verbose=(self.verbose > 1)); self.net_original.reset_all()
             # - Set the "suppress" fields, they are reset by reset_all()
             self.net_original.lyrRes.t_start_suppress = t_start_suppress
@@ -273,12 +252,14 @@ class HeySnipsNetworkADS(BaseModel):
             out_val_mismatch_two = val_sim_mismatch_two["output_layer"].samples.T
             out_val_original = val_sim_original["output_layer"].samples.T
             out_val_perturbed = val_sim_perturbed["output_layer"].samples.T
-            out_val_discretized = val_sim_discretized["output_layer"].samples.T
+            out_val_discretized_4_bit = val_sim_discretized_4_bit["output_layer"].samples.T
+            out_val_discretized_3_bit = val_sim_discretized_3_bit["output_layer"].samples.T
 
             self.net_mismatch_one.reset_all()
             self.net_mismatch_two.reset_all()
             self.net_original.reset_all()
-            self.net_discretized.reset_all()
+            self.net_discretized_4_bit.reset_all()
+            self.net_discretized_3_bit.reset_all()
             
             # - Compute the final classification output for mismatch one
             final_out_mismatch_one = out_val_mismatch_one.T @ self.w_out
@@ -297,8 +278,12 @@ class HeySnipsNetworkADS(BaseModel):
             final_out_perturbed = filter_1d(final_out_perturbed, alpha=0.95)
 
             # - Compute the final classification output of discretized net
-            final_out_discretized = out_val_discretized.T @ self.w_out
-            final_out_discretized = filter_1d(final_out_discretized, alpha=0.95)
+            final_out_discretized_4_bit = out_val_discretized_4_bit.T @ self.w_out
+            final_out_discretized_4_bit = filter_1d(final_out_discretized_4_bit, alpha=0.95)
+
+            # - Compute the final classification output of discretized net
+            final_out_discretized_3_bit = out_val_discretized_3_bit.T @ self.w_out
+            final_out_discretized_3_bit = filter_1d(final_out_discretized_3_bit, alpha=0.95)
 
             # - Check for threshold crossing of mismatch one
             if ((final_out_mismatch_one > self.threshold).any()):
@@ -326,10 +311,15 @@ class HeySnipsNetworkADS(BaseModel):
             else:
                 predicted_label_perturbed = 0
             # - Check for crossing of the discretized net
-            if ((final_out_discretized > self.threshold).any()):
-                predicted_label_discretized = 1
+            if ((final_out_discretized_4_bit > self.threshold).any()):
+                predicted_label_discretized_4_bit = 1
             else:
-                predicted_label_discretized = 0
+                predicted_label_discretized_4_bit = 0
+            # - Check for crossing of the discretized 3bit net
+            if ((final_out_discretized_3_bit > self.threshold).any()):
+                predicted_label_discretized_3_bit = 1
+            else:
+                predicted_label_discretized_3_bit = 0
 
             tgt_label = batch[0][1]
             if(predicted_label_mismatch_one == tgt_label):
@@ -342,8 +332,10 @@ class HeySnipsNetworkADS(BaseModel):
                 correct_original += 1
             if(predicted_label_perturbed == tgt_label):
                 correct_perturbed += 1
-            if(predicted_label_discretized == tgt_label):
-                correct_discretized += 1
+            if(predicted_label_discretized_4_bit == tgt_label):
+                correct_discretized_4_bit += 1
+            if(predicted_label_discretized_3_bit == tgt_label):
+                correct_discretized_3_bit += 1
             count += 1
 
 
@@ -419,7 +411,8 @@ class HeySnipsNetworkADS(BaseModel):
                 # plt.plot(np.arange(0,len(final_out_mismatch_two)*self.dt, self.dt),final_out_mismatch_two, label="Mismatch 2")
                 plt.plot(np.arange(0,len(final_out_original)*self.dt, self.dt),final_out_original, label="No mismatch")
                 # plt.plot(np.arange(0,len(final_out_perturbed)*self.dt, self.dt),final_out_perturbed, label="Perturbed")
-                plt.plot(np.arange(0,len(final_out_discretized)*self.dt, self.dt),final_out_discretized, label="Discretized")
+                plt.plot(np.arange(0,len(final_out_discretized_4_bit)*self.dt, self.dt),final_out_discretized_4_bit, label="Discretized 4bit")
+                plt.plot(np.arange(0,len(final_out_discretized_3_bit)*self.dt, self.dt),final_out_discretized_4_bit, label="Discretized 3bit")
                 plt.plot(target_times, target, label="Target")
                 plt.plot(np.arange(0,len(ts_rate_out.samples)*self.dt, self.dt),ts_rate_out.samples, label="Rate")
                 plt.axhline(y=self.threshold)
@@ -428,10 +421,10 @@ class HeySnipsNetworkADS(BaseModel):
                 plt.draw()
                 plt.pause(0.001)
 
-            print("--------------------------------")
-            print("TESTING batch", batch_id)
-            print("True label", tgt_label, "Mismatch-One", predicted_label_mismatch_one, "Mismatch-Two", predicted_label_mismatch_two, "No mismatch", predicted_label_original, "Discretized", predicted_label_discretized, "Rate label", predicted_label_rate)
-            print("--------------------------------")
+            # print("--------------------------------")
+            # print("TESTING batch", batch_id)
+            # print("True label", tgt_label, "Mismatch-One", predicted_label_mismatch_one, "Mismatch-Two", predicted_label_mismatch_two, "No mismatch", predicted_label_original, "Discretized 4bit", predicted_label_discretized_4_bit, "Discretized 3bit", predicted_label_discretized_3_bit, "Rate label", predicted_label_rate)
+            # print("--------------------------------")
 
             test_logger.add_predictions(pred_labels=[predicted_label_mismatch_one], pred_target_signals=[ts_rate_out.samples])
             fn_metrics('test', test_logger)
@@ -439,9 +432,10 @@ class HeySnipsNetworkADS(BaseModel):
         test_acc_mismatch_one = correct_mismatch_one / count
         test_acc_mismatch_two = correct_mismatch_two / count
         test_acc_original = correct_original / count
-        test_acc_discretized = correct_discretized / count
+        test_acc_discretized_4_bit = correct_discretized_4_bit / count
+        test_acc_discretized_3_bit = correct_discretized_3_bit / count
         test_acc_rate = correct_rate / count
-        print("Mismatch 1 test accuracy is %.4f Mismatch 2 test accuracy is %.4f Original test accuracy is %.4f Rate network test accuracy is %.4f Discretized test accuracy is %.4f" % (test_acc_mismatch_one, test_acc_mismatch_two, test_acc_original, test_acc_rate, test_acc_discretized))
+        print("Mismatch 1 test accuracy is %.4f Mismatch 2 test accuracy is %.4f Original test accuracy is %.4f Rate network test accuracy is %.4f Discretized 4bit test accuracy is %.4f Discretized 3bit test accuracy is %.4f" % (test_acc_mismatch_one, test_acc_mismatch_two, test_acc_original, test_acc_rate, test_acc_discretized_4_bit, test_acc_discretized_3_bit))
 
 
 if __name__ == "__main__":
@@ -454,7 +448,7 @@ if __name__ == "__main__":
     parser.add_argument('--threshold', default=0.7, type=float, help="Threshold for prediction")
     parser.add_argument('--num_test', default=100, type=float, help="Number of test samples")
     parser.add_argument('--std', default=0.2, type=float, help="Percentage of mean for the mismatch standard deviation")
-    parser.add_argument('--num-bits', default=6, type=int, help="Number of bits required to encode whole spectrum of weights")
+    parser.add_argument('--num-bits', default=4, type=int, help="Number of bits required to encode whole spectrum of weights")
 
     args = vars(parser.parse_args())
     verbose = args['verbose']
@@ -469,43 +463,46 @@ if __name__ == "__main__":
     balance_ratio = 1.0
     snr = 10.
 
-    experiment = HeySnipsDEMAND(batch_size=batch_size,
-                                percentage=percentage_data,
-                                snr=snr,
-                                is_tracking=False,
-                                one_hot=False)
+    for _ in range(10):
 
-    num_train_batches = int(np.ceil(experiment.num_train_samples / batch_size))
-    num_val_batches = int(np.ceil(experiment.num_val_samples / batch_size))
-    num_test_batches = int(np.ceil(experiment.num_test_samples / batch_size))
 
-    model = HeySnipsNetworkADS(labels=experiment._data_loader.used_labels,
-                                validation_step=-1,
-                                num_neurons=-1,
-                                tau_slow=-1,
-                                tau_out=-1,
-                                num_val=-1,
-                                num_test=num_test,
-                                mismatch_std=mismatch_std,
-                                num_bits=num_bits,
-                                num_epochs=0,
-                                threshold=threshold,
-                                eta=-1,
-                                verbose=verbose)
+        experiment = HeySnipsDEMAND(batch_size=batch_size,
+                                    percentage=percentage_data,
+                                    snr=snr,
+                                    is_tracking=False,
+                                    one_hot=False)
 
-    experiment.set_model(model)
-    experiment.set_config({'num_train_batches': num_train_batches,
-                           'num_val_batches': num_val_batches,
-                           'num_test_batches': num_test_batches,
-                           'batch size': batch_size,
-                           'percentage data': percentage_data,
-                           'snr': snr,
-                           'balance_ratio': balance_ratio})
-    experiment.start()
+        num_train_batches = int(np.ceil(experiment.num_train_samples / batch_size))
+        num_val_batches = int(np.ceil(experiment.num_val_samples / batch_size))
+        num_test_batches = int(np.ceil(experiment.num_test_samples / batch_size))
 
-    print("experiment done")
+        model = HeySnipsNetworkADS(labels=experiment._data_loader.used_labels,
+                                    validation_step=-1,
+                                    num_neurons=-1,
+                                    tau_slow=-1,
+                                    tau_out=-1,
+                                    num_val=-1,
+                                    num_test=num_test,
+                                    mismatch_std=mismatch_std,
+                                    num_bits=num_bits,
+                                    num_epochs=0,
+                                    threshold=threshold,
+                                    eta=-1,
+                                    verbose=verbose)
 
-    print(f"Accuracy score: {experiment.acc_scores}")
+        experiment.set_model(model)
+        experiment.set_config({'num_train_batches': num_train_batches,
+                            'num_val_batches': num_val_batches,
+                            'num_test_batches': num_test_batches,
+                            'batch size': batch_size,
+                            'percentage data': percentage_data,
+                            'snr': snr,
+                            'balance_ratio': balance_ratio})
+        experiment.start()
 
-    print("confusion matrix")
-    print(experiment.cm)
+        print("experiment done")
+
+        print(f"Accuracy score: {experiment.acc_scores}")
+
+        print("confusion matrix")
+        print(experiment.cm)
