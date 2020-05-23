@@ -4,6 +4,7 @@
 
 \usepackage{jmlr2e}
 \usepackage{amsmath}
+\usepackage{adjustbox}
 \usepackage[]{algorithm2e}
 \usepackage[normalem]{ulem}
 
@@ -38,7 +39,7 @@
   representation error of some input signal. This precise network architecture leads to a robust, energy efficient and precise signal
   representation that can be augmented with additional recurrent weights to perform more complex tasks. \newline
   While it has been shown that these networks can be used to implement linear (\cite{boerlin}) or even non-linear dynamical systems (\cite{alemi2017learning}),
-  no paper (to our best knowledge) has showed a way to train a classifier using efficient balanced networks (EBN) as a foundation. \newline
+  no paper (to our best knowledge) has shown a way to train a classifier using efficient balanced networks (EBN) as a foundation. \newline
   In this report, we demonstrate how a tightly balanced network can learn to do arbitrary classification tasks of varying complexity, while still keeping 
   the benefits of the balanced network presented in \cite{Bourdoukan:2012:LOS:2999325.2999390}.
    
@@ -53,7 +54,7 @@ Let us assume an arbitrary dynamical system of the form
   \dot{x} = f(x) + c(t)
 \end{equation}
 
-where $x$ is a vector of state variables $x_j$, $f(.)$ is a non-linear function (e.g. $tanh(.)$), and $c$ is a time-dependent input of the same dimensionality of $x$.
+where $x$ is a vector of state variables $x_j$, $f(.)$ is a non-linear function (e.g. $\textnormal{tanh}(.)$), and $c$ is a time-dependent input of the same dimensionality of $x$.
 Furthermore, let us assume a "student" dynamical system of the form
 
 \begin{equation} \label{eq:student_dyn}
@@ -106,12 +107,12 @@ Following \cite{alemi2017learning}, we differentiate Eq. \ref{eq:voltage_dyn} an
 
 We then approximate the term $\lambda \hat{x} + f(x)$ [Not sure here. In the paper it is $\lambda x + f(x)$, but I can't derive it] by a weighted set of basis functions, given by $\mathbf{\Omega^s} \Psi(r)$, where $\Psi(r)=\phi(\mathbf{M}r+\theta)$. We note that
 in our simulations, we omitted the term $\Psi(r)$ and simply replaced it with the population spike trains $o(t)$. \\
-By feeding the error term $e = x - \hat{x}$ back into the network using the optimal feed-forward weights $\mathbf{D}^T$, we obtain the final network dynamics
+By feeding the error term $e = x - \hat{x}$ back into the network using the feed-forward weights $\mathbf{D}^T$, we obtain the final network dynamics
 
 \begin{equation*}
   \dot{V}(t) = -\lambda V(t) + \mathbf{F}c(t) - \mathbf{\Omega^f}o(t) + \mathbf{\Omega^s}o(t) + k\mathbf{D}^Te(t)
 \end{equation*}
-where the optimal feed-forward weights $\mathbf{F}$ are given by $\mathbf{D}^T$ and the optimal fast recurrent weights by $\mathbf{\Omega^f}=-(\mathbf{D}^T\mathbf{D} + \mu\mathbf{I})$. \\
+where the feed-forward weights $\mathbf{F}$ are given by $\mathbf{D}^T$ and the optimal fast recurrent weights by $\mathbf{\Omega^f}=-(\mathbf{D}^T\mathbf{D} + \mu\mathbf{I})$. \\
 Similar to the case in control-theory, the learning rule for the slow recurrent weights is given by
 
 \begin{equation*}
@@ -147,7 +148,7 @@ To answer this question, we consider a simple rate network consisting of $\hat{N
   \tau_j \dot{x}_j = -x_j + \hat{\mathbf{F}}c(t)_j + \hat{\mathbf{\Omega}}f(x(t))_j + b_j + \epsilon_j
 \end{equation}
 where $\tau_j$ is the time constant of the \textit{j-th} unit, $\hat{\mathbf{F}}$ are feed-forward weights of shape $\hat{N} \times N_c$, $c(t)$ is the $N_c$ dimensional input at time $t$,
-$f(.)$ is a non-linear function like $tanh(.)$, $\hat{\mathbf{\Omega}}$ are recurrent weights of shape $\hat{N} \times \hat{N}$ and $b_j$ and $\epsilon_j$ are bias and noise terms, respectively.
+$f(.)$ is a non-linear function like $\textnormal{tanh}(.)$, $\hat{\mathbf{\Omega}}$ are recurrent weights of shape $\hat{N} \times \hat{N}$ and $b_j$ and $\epsilon_j$ are bias and noise terms, respectively.
 We observe that a rate network can be written in the general form $\dot{x} = \tilde{f}(x) + \tilde{c}(t)$, with $\tilde{f}(x) = 1/\tau(-x + \hat{\mathbf{\Omega}}fx(t))+ \epsilon)$
 and $\tilde{c}(t)=1/\tau(\hat{\mathbf{F}}c(t) + b)$, meaning that an efficient balanced network can be trained to implement the dynamics of \textit{any} given rate network obeying the
 dynamics of Eq. \ref{eq:rate_dyn}. \\
@@ -174,24 +175,26 @@ and $r(t)$ are the filtered spike trains at time $t$ of the spiking network. \\
   16 channel input, denoted $\mathbf{c}$. This input is then fed into the pre-trained rate network, which does inference on the presented signal. The dynamics
   $\mathbf{x}$ produced by the rate network are then used to compute the error $\mathbf{e} = \mathbf{x} - \hat{\mathbf{x}}$, which is then fed back into
   the spiking network using the feed-forward weights $\mathbf{D}^T$. Simultaneously, the spiking network receives the same input as the rate network, simply projected by the feed-forward
-  weights $\mathbf{F} = \mathbf{D}^T$. Using the read-out weights $\mathbf{D}$, it then produces an estimation of the rate network dynamics $\hat{\mathbf{x}}$, which is then used to compute
+  weights $\mathbf{F} = \mathbf{D}^T$. Using the read-out weights $\mathbf{D}$, it then produces an estimation of the rate network dynamics $\hat{\mathbf{x}}$, which is then used to compute the
   error. \newline
   The inference mode, depicted in \textbf{B}, is straightforward: The now trained spiking network receives the same input the rate network would receive, but transformed using the
   feed-forward weights $\mathbf{F}$. It then produces the network dynamics $\tilde{\mathbf{x}} = \mathbf{D}r$ that closely match the ones of the rate network (if it would have received the signal)
-  and produces the output $\tilde{\mathbf{y}} = \hat{\mathbf{D}}\tilde{\mathbf{x}}$. The value $\tilde{\mathbf{y}}$ is then thresholded to obtain the final prediction. 
-  encoding the signal with high precision while m.}
+  and produces the output $\tilde{\mathbf{y}} = \hat{\mathbf{D}}\tilde{\mathbf{x}}$. The value $\tilde{\mathbf{y}}$ is then thresholded to obtain the final prediction.}
   \label{fig:figure1}
 \end{figure}
 
 \section{Results}
 
+\subsection{Temporal XOR}
+In this experiment, a rate network of 25 neurons was trained to perform
+temporal XOR on a one-dimensional input. The network was presented with two bumps
+of magnitude $\pm 1$, indicating True or False. The bumps had a variable length
+between 100 and 230ms and were separated by a 100ms pause, requiring the network
+to memorize the first bump for some time. 
+
 \begin{figure}[!htb]
   \includegraphics[width = \columnwidth, height=10cm]{figures/figure2.png}
-  \caption{In this experiment, a rate network of 25 neurons was trained to perform
-  temporal XOR on a one-dimensional input. The network was presented with two bumps
-  of magnitude $\pm 1$, indicating True or False. The bumps had a variable length
-  between 100 and 230ms and were separated by a 100ms pause, requiring the network
-  to memorize the first bump for some time. \textbf{A:} The spiking network consisting
+  \caption{\textbf{A:} The spiking network consisting
   of 300 neurons successfully reconstructs the dynamics of the rate network.
   \textbf{B:} Due to the underlying balanced network, the membrane potentials show
   irregular and distributed spiking activity. [This is not the case yet, but should follow from the theory]
@@ -206,6 +209,23 @@ and $r(t)$ are the filtered spike trains at time $t$ of the spiking network. \\
   \label{fig:figure2}
 \end{figure}
 
+\subsection{Wake-phrase detection}
+To show that our approach also works on a more complex task, we used a network consisting of $N=1024$ spiking
+neurons that learned to imitate a rate network with $\hat{N}=128$ units. The rate network was trained to recognize
+a wake-phrase using roughly 10k training samples and 5k validation and testing samples. While the rate network
+achieved a testing accuracy of ~90\%, our spiking imitator achieved ~85\% after training for only 10 epochs on about 500
+training samples. We found that for training our network a learning rate schedule of the form $f(t)=a e^{(-t/b)}+c$
+worked best, where $a=\eta_{initial}$, $c=\eta_\textnormal{end}$ and $b = (T/2) / \textnormal{ln}(100)$ with $T$ being the
+total number of signal iterations. For the experiments conducted in this section, we chose $\eta_\textnormal{initial}=1e-4$ and $\eta_\textnormal{end}=1e-6$.
+We also realized that having a schedule for the factor $k$ that controls the amount of error-feedback current is of high importance:
+A constantly high $k$ results in no generalization during training since the network dynamics are governed by the error-feedback current and a too low
+$k$ does not give the slow recurrent weights a chance to update correctly since the network is far from following the desired dynamics.
+For these reasons, having a schedule for $k$ is extremely important. For this experiment, we chose a step function that decrements $k$ by a fixed amount
+after some number of signal iterations. The reason we chose a step function is the following: 
+If $k$ is constantly changing, even slowly, the amount of error-feedback current that "helps" the network
+is constantly changing as well and does not give the slow recurrent weights a chance to adapt to the amount of "helper-current" that is
+present in the network. We achieved best performance when we gave the slow recurrent weights some time to adapt to the current level by just
+keeping $k$ constant for some time before decreasing it again.   
 
 \begin{figure}[!htb]
   \includegraphics[width = \columnwidth, height=11cm]{figures/figure3.png}
@@ -220,10 +240,61 @@ and $r(t)$ are the filtered spike trains at time $t$ of the spiking network. \\
   while imitating the dynamics of the rate network (\textbf{E}). \textbf{F:} As expected, the spiking activity of the
   network is distributed and does not exhibit any output dependent patterns [This is not the case yet, but should follow from the theory].
   For this experiment, 2000 neurons were used, but a network of 1000 neurons achieves similar performance.}
-  \label{fig:figure2}
+  \label{fig:figure3}
 \end{figure}
 
-\newpage
+\subsection{Robustness}
+
+On analog mixed-signal neuromorphic hardware components are not identical, which leads to a distribution
+of parameters such as time constants or spiking thresholds. In this experiment, we simulated component mismatch by
+distributing the synaptic- and membrane time-constants, as well as the spiking thresholds using a Gaussian distribution with mean
+equal to the original value and the standard deviation being 20\% of the mean. Figure \ref{fig:figure5} demonstrates this behavior by plotting
+the distributions of membrane time-constants on multiple cores on a neuromorphic processor, obtained through oscilloscope recordings.
+Figure \ref{fig:figure4} shows the robustness of the network to component mismatch and sudden neuron failure for 300ms. Since neuromorphic
+processors, analog or digital, are furthermore constrained in the resolution of their weights, which also can be seen as a type of noise,
+we reduced the total weights to 3 and 4 bit floating point values. To integrate the low-resolution weights into training, we kept a
+full-precision version of the weights and adapted them using the updates computed from the low-resolution network. Not surprisingly,
+this method yields much better results than just reducing the precision of the weights post-learning. Table \ref{table:table1} shows the
+testing accuracies for 1000 samples using the networks perturbed by various noise sources.
+
+\begin{figure}[!htb]
+  \includegraphics[width = \columnwidth, height=13cm]{figures/figure4.png}
+  \caption{\textbf{A:} Reconstruction of the 128-dimensional target dynamics (only first 10 dimensions are shown). \textbf{B:} Here,
+  one can observe the effect of the mismatch on the recurrent dynamics. Due to the distribution of the neuron- and synaptic
+  time-constants, recurrent activity is sustained a little longer with some individual neurons spiking at a higher frequency.
+  In the last network instance, we clamped 20\% of the neurons at a crucial time during classification. However, as can be seen
+  in \textbf{C}, the reconstruction is stable, as well as the final output. It should also be noted that
+  for 20\% clamped neurons, the mean-squared error (MSE) did not increase during the time the neurons were shut off.}
+  \label{fig:figure4}
+\end{figure}
+
+\begin{table}[!htb]
+  \begin{adjustbox}{center} \label{table:table1}
+  \begin{tabular}{|l|l|l|l|l|l|}
+  \hline
+  {Original} & {Mismatch I} & {Mismatch II} & {Quantised to 4 bits} & {Quantised to 3 bits} & {Rate network} \\
+  \hline
+  {85.31\%}  & {79.20\%}    & {85.91\%}     & {84.02\%}             & {84.02\%}             & {90.51\%}      \\
+  {84.62\%}  & {83.91\%}    & {85.11\%}     & {84.32\%}             & {84.32\%}             & {89.11\%}      \\
+  {83.33\%}  & {84.42\%}    & {86.21\%}     & {83.12\%}             & {83.12\%}             & {91.21\%}      \\
+  {84.92\%}  & {83.91\%}    & {85.11\%}     & {83.22\%}             & {83.22\%}             & {89.91\%}      \\
+  \hline
+  \end{tabular}
+\end{adjustbox}
+\caption{Test accuracies over 5 trials on 1000 samples for networks perturbed by different kinds of noise. [NEEDS FIXING]}
+\end{table}
+
+\begin{figure}[!htb]
+  \includegraphics[width = \columnwidth, height=6cm]{figures/figure5.png}
+  \caption{\textbf{A} shows an example of such a recording. \textbf{B:} The membrane time-constants of neurons for different expected time-constants.
+  It can be seen that as the time constant increases, also the standard deviation increases (thus $\sigma=0.2\mu$).
+  The time-constants were computed by fitting an exponential to subthreshold recordings of each neuron.}
+  \label{fig:figure5}
+\end{figure}
+
+[INTERESTING: FAST CONNS GOOD FOR NEURON LOSS?]
+
+\clearpage
 
 \vskip 0.2in
 \bibliography{bibliography}

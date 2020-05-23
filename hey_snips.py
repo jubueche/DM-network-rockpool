@@ -435,13 +435,13 @@ class HeySnipsNetworkADS(BaseModel):
                 avg_training_acc[1:] = avg_training_acc[:-1]
                 avg_training_acc[0] = correct
 
-                print("--------------------")
-                print("Epoch", epoch, "Batch ID", batch_id)
+                print("--------------------",flush=True)
+                print("Epoch", epoch, "Batch ID", batch_id,flush=True)
                 training_acc = np.sum(avg_training_acc)/time_horizon
                 reconstruction_acc = np.mean(recon_erros)
                 time_track.append(num_signal_iterations)
-                print("Target label", tgt_label, "Predicted label", predicted_label, ("Avg. training acc. %.4f" % (training_acc)), ("Avg. reconstruction error %.4f" % (reconstruction_acc)), "K", self.net.lyrRes.k)
-                print("--------------------")
+                print("Target label", tgt_label, "Predicted label", predicted_label, ("Avg. training acc. %.4f" % (training_acc)), ("Avg. reconstruction error %.4f" % (reconstruction_acc)), "K", self.net.lyrRes.k,flush=True)
+                print("--------------------",flush=True)
 
                 train_logger.add_predictions(pred_labels=[predicted_label], pred_target_signals=[ts_rate_out.samples])
                 fn_metrics('train', train_logger)
@@ -456,7 +456,7 @@ class HeySnipsNetworkADS(BaseModel):
 
             # - Memory footprint
             current, peak = tracemalloc.get_traced_memory()
-            print(f"Current memory usage is {current / 10**6} MB; Peak was {peak / 10**6} MB; {peak / 10**9} GB")
+            print(f"Current memory usage is {current / 10**6} MB; Peak was {peak / 10**6} MB; {peak / 10**9} GB",flush=True)
 
             # Validate at the end of the epoch
             val_acc, validation_recon_acc = self.perform_validation_set(data_loader=data_loader, fn_metrics=fn_metrics)
@@ -474,7 +474,7 @@ class HeySnipsNetworkADS(BaseModel):
                 fn = os.path.join(self.base_path,("Resources/hey-snips/"+self.node_prefix+"tmp.json"))
                 with open(fn, "w") as f:
                     json.dump(savedict, f)
-                    print("Saved net")
+                    print("Saved net",flush=True)
         
         if(total_num_iter > 0 and self.verbose > 0):
             _, ax1 = plt.subplots()
@@ -566,17 +566,17 @@ class HeySnipsNetworkADS(BaseModel):
             if(rate_label == predicted_label):
                 same_as_rate += 1
 
-            print("--------------------------------")
-            print("VALIDATAION batch", batch_id)
-            print("true label", tgt_label, "rate label", rate_label, "pred label", predicted_label)
-            print("--------------------------------")
+            print("--------------------------------",flush=True)
+            print("VALIDATAION batch", batch_id,flush=True)
+            print("true label", tgt_label, "rate label", rate_label, "pred label", predicted_label,flush=True)
+            print("--------------------------------",flush=True)
 
             val_logger.add_predictions(pred_labels=[predicted_label], pred_target_signals=[final_out])
             fn_metrics('val', val_logger)
 
         rate_acc = same_as_rate / counter
         val_acc = correct / counter
-        print("Validation accuracy is %.3f | Compared to rate is %.3f" % (val_acc, rate_acc))
+        print("Validation accuracy is %.3f | Compared to rate is %.3f" % (val_acc, rate_acc),flush=True)
 
         if(self.dry_run):
             return (np.random.random(),np.random.random())
@@ -646,17 +646,17 @@ class HeySnipsNetworkADS(BaseModel):
                 plt.draw()
                 plt.pause(0.001)
 
-            print("--------------------------------")
-            print("TESTING batch", batch_id)
-            print("true label", tgt_label, "pred label", predicted_label, "Rate label", predicted_label_rate)
-            print("--------------------------------")
+            print("--------------------------------",flush=True)
+            print("TESTING batch", batch_id,flush=True)
+            print("true label", tgt_label, "pred label", predicted_label, "Rate label", predicted_label_rate,flush=True)
+            print("--------------------------------",flush=True)
 
             test_logger.add_predictions(pred_labels=[predicted_label], pred_target_signals=[ts_rate_out.samples])
             fn_metrics('test', test_logger)
 
         test_acc = correct / counter
         test_acc_rate = correct_rate / counter
-        print("Test accuracy is %.4f Rate network test accuracy is %.4f" % (test_acc, test_acc_rate))
+        print("Test accuracy is %.4f Rate network test accuracy is %.4f" % (test_acc, test_acc_rate),flush=True)
         # - Save to tracking dict
         self.track_dict["testing_acc"] = test_acc
 
@@ -755,9 +755,9 @@ if __name__ == "__main__":
                            'balance_ratio': balance_ratio})
     experiment.start()
 
-    print("experiment done")
-    print(f"Accuracy score: {experiment.acc_scores}")
-    print("confusion matrix")
+    print("experiment done",flush=True)
+    print(f"Accuracy score: {experiment.acc_scores}",flush=True)
+    print("confusion matrix",flush=True)
     print(experiment.cm)
     param_string = "Resources/hey-snips/"+model.node_prefix+"_training_evolution.json"
     fn = os.path.join(model.base_path,param_string)
