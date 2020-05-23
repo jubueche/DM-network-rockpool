@@ -6,13 +6,75 @@ matplotlib.rcParams['lines.linewidth'] = 0.5
 matplotlib.rcParams['lines.markersize'] = 0.5
 matplotlib.rcParams['axes.xmargin'] = 0
 import matplotlib.pyplot as plt
+import json
 
-PLOT_ROBUSTNESS = True
+PLOT_TRAINING_NUM = True
+PLOT_ROBUSTNESS = False
+PLOT_HEY_SNIPS = False
 #### General format: Time x Features (e.g. 5000 x 128)
 duration = 5.0
 N = 1024
 
-if(PLOT_ROBUSTNESS):
+
+if(PLOT_TRAINING_NUM):
+
+    training_evolutions = []
+    with open("Resources/CloudModels/node_1_training_evolution.json", "rb") as f:
+        training_evolutions.append((json.load(f),512))
+    with open("Resources/CloudModels/node_2_training_evolution.json", "rb") as f:
+        training_evolutions.append((json.load(f),640))
+    with open("Resources/CloudModels/node_3_training_evolution.json", "rb") as f:
+        training_evolutions.append((json.load(f),768))
+    with open("Resources/CloudModels/node_4_training_evolution.json", "rb") as f:
+        training_evolutions.append((json.load(f),896))
+    with open("Resources/CloudModels/node_5_training_evolution.json", "rb") as f:
+        training_evolutions.append((json.load(f),1024))
+
+    total_num_iter = len(training_evolutions[0][0]['training_acc'])
+    step_size = 25
+    start_k = 200
+    stop_k = step_size
+    num_reductions = int((start_k - stop_k) / step_size) + 1
+    reduce_after = int(total_num_iter / num_reductions)
+    reduction_indices = [idx for idx in range(1,total_num_iter) if (idx % reduce_after) == 0]
+    k_of_t = np.zeros(total_num_iter)
+    if(total_num_iter > 0):
+        k_of_t[0] = start_k
+        for t in range(1,total_num_iter):
+            if(t in reduction_indices):
+                k_of_t[t] = k_of_t[t-1]-step_size
+            else:
+                k_of_t[t] = k_of_t[t-1]
+        f_k = lambda t : np.maximum(0,k_of_t[t])
+
+    fig = plt.figure(figsize=(6,4),constrained_layout=True)
+    gs = fig.add_gridspec(2, 1) # Height ratio is 4 : 4 : 2
+    ax1 = fig.add_subplot(gs[0,0])
+    ax2 = ax1.twinx()
+    ax2.set_ylabel("k", color="r",rotation='horizontal')
+    ax1.set_title("Training accuracy")
+    ax1.set_ylim([0.0,1.0])
+    ax3 = fig.add_subplot(gs[1,0])
+    ax3.set_title("Reconstruction error")
+    ax3.set_ylim([0.0,1.0])
+    ax4 = ax3.twinx()
+    ax4.set_ylabel("k", color="r",rotation='horizontal')
+
+    for (te,num_neurons) in training_evolutions:
+        print(te.keys())
+        ax1.plot(te['training_acc'], label=str(num_neurons))
+        ax3.plot(te['training_recon_acc'], label=str(num_neurons))
+    
+    ax2.plot(np.arange(0,total_num_iter),f_k(np.arange(0,total_num_iter)),color="r")
+    ax4.plot(np.arange(0,total_num_iter),f_k(np.arange(0,total_num_iter)),color="r")
+
+    ax1.legend(frameon=False, loc=0, prop={'size': 5})
+    # ax2.legend()
+    # ax3.legend()
+    plt.show()
+
+
+elif(PLOT_ROBUSTNESS):
     with open('Resources/Plotting/Robustness/spike_channels_original.npy', 'rb') as f:
         spike_channels_original = np.load(f)
     with open('Resources/Plotting/Robustness/spike_times_original.npy', 'rb') as f:
@@ -201,7 +263,7 @@ if(PLOT_ROBUSTNESS):
 
     plt.show()
 
-else:
+elif(PLOT_HEY_SNIPS):
     # - load voltages, rate dynamics, recon dynamics, rate output, spiking output, fast and slow matrix, raw input, filtered input
     with open('Resources/Plotting/General/v.npy', 'rb') as f:
         v = np.load(f).T

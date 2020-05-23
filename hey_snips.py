@@ -59,6 +59,7 @@ class HeySnipsNetworkADS(BaseModel):
         self.verbose = verbose
         self.dry_run = dry_run
         self.node_id = node_id
+        self.num_distinct_weights = discretize
         self.fs = fs
         self.dt = 0.001
 
@@ -136,7 +137,7 @@ class HeySnipsNetworkADS(BaseModel):
             self.tau_slow = tau_slow
             self.tau_out = tau_out
 
-            tau_syn_fast = 1e-3
+            tau_syn_fast = tau_slow
             mu = 0.0005
             nu = 0.0001
             D = np.random.randn(Nc,self.num_neurons) / Nc
@@ -168,7 +169,7 @@ class HeySnipsNetworkADS(BaseModel):
             weights_in_realistic = D_realistic
             weights_out_realistic = D_realistic.T
             weights_fast_realistic = a*np.divide(weights_fast.T, v_thresh.ravel()).T # - Divide each row
-
+        
             weights_fast_realistic = np.zeros((self.num_neurons,self.num_neurons))
 
             # - Reset is given by v_reset_target = b - a
@@ -180,7 +181,7 @@ class HeySnipsNetworkADS(BaseModel):
                                             Nb=self.num_neurons,
                                             weights_in=weights_in_realistic * self.tau_mem,
                                             weights_out= weights_out_realistic / 2,
-                                            weights_fast= - weights_fast_realistic * self.tau_mem / tau_syn_fast,
+                                            weights_fast= - weights_fast_realistic / tau_syn_fast * 5,
                                             weights_slow = weights_slow,
                                             eta=eta,
                                             k=k,
@@ -193,7 +194,7 @@ class HeySnipsNetworkADS(BaseModel):
                                             tau_syn_r_fast=tau_syn_fast,
                                             tau_syn_r_slow=self.tau_slow,
                                             tau_syn_r_out=self.tau_out,
-                                            discretize=discretize,
+                                            discretize=self.num_distinct_weights,
                                             discretize_dynapse=discretize_dynapse,
                                             record=True
                                             )
@@ -221,6 +222,70 @@ class HeySnipsNetworkADS(BaseModel):
 
     def save(self, fn):
         return
+
+    def check_balance(self, ts_spiking_in):
+        # - Evolve
+        fast_weights = self.net.lyrRes.weights_fast
+        self.net.lyrRes.ts_target = ts_spiking_in
+        val_sim = self.net.evolve(ts_input=ts_spiking_in, verbose=True); self.net.reset_all()
+        ts_out_val = val_sim["output_layer"]
+
+        v = self.net.lyrRes._last_evolve["v"]
+        vt = self.net.lyrRes._last_evolve["vt"]
+        stagger_v = np.ones(v.shape)
+        for idx in range(self.num_neurons):
+            stagger_v[idx,:] += idx
+        v_staggered = stagger_v + v
+
+        self.net.lyrRes.weights_fast *= 0
+        val_sim_no_fast = self.net.evolve(ts_input=ts_spiking_in, verbose=True); self.net.reset_all()
+        self.net.lyrRes.weights_fast = fast_weights
+        ts_out_val_no_fast = val_sim_no_fast["output_layer"]
+
+        v_no_fast = self.net.lyrRes._last_evolve["v"]
+        vt_no_fast = self.net.lyrRes._last_evolve["vt"]
+        stagger_v_no_fast = np.ones(v_no_fast.shape)
+        for idx in range(self.num_neurons):
+            stagger_v_no_fast[idx,:] += idx
+        v_staggered_no_fast = stagger_v_no_fast + v_no_fast
+
+        # - Compute scaling weights
+        A_no_fast = np.linalg.pinv(ts_out_val_no_fast.samples.T @ ts_out_val_no_fast.samples) @ ts_out_val_no_fast.samples.T @ ts_spiking_in.samples 
+        A_fast = np.linalg.pinv(ts_out_val.samples.T @ ts_out_val.samples) @ ts_out_val.samples.T @ ts_spiking_in.samples
+        x_recon_no_fast =  ts_out_val_no_fast.samples @ A_no_fast
+        x_recon_fast = ts_out_val.samples @ A_fast
+
+        error_no_fast = np.sum(np.var(ts_spiking_in.samples-x_recon_no_fast, axis=0, ddof=1)) / (np.sum(np.var(ts_spiking_in.samples, axis=0, ddof=1)))
+        error_fast = np.sum(np.var(ts_spiking_in.samples-x_recon_fast, axis=0, ddof=1)) / (np.sum(np.var(ts_spiking_in.samples, axis=0, ddof=1)))
+        print("Error with fast conn. is",error_fast,"Error without fast connections is",error_no_fast)
+
+        # - Plot
+        fig = plt.figure(figsize=(20,10),constrained_layout=True)
+        gs = fig.add_gridspec(4, 2)
+        
+        plot_num = 10
+        ax0 = fig.add_subplot(gs[0,:])
+        ts_spiking_in.plot()
+        ax1 = fig.add_subplot(gs[1,0])
+        ax1.set_title(r"With fast recurrent weights")
+        val_sim["lyrRes"].plot()
+        ax1.set_ylim([-0.5,self.num_neurons-0.5])
+        ax2 = fig.add_subplot(gs[2,0])
+        ts_out_val.plot()
+        ax3 = fig.add_subplot(gs[3,0])
+        ax3.plot(vt, v_staggered[:plot_num,:].T)
+
+        ax5 = fig.add_subplot(gs[1,1])
+        ax5.set_title(r"Without fast recurrent weights")
+        val_sim_no_fast["lyrRes"].plot()
+        ax5.set_ylim([-0.5,self.num_neurons-0.5])
+        ax6 = fig.add_subplot(gs[2,1])
+        ts_out_val_no_fast.plot()
+        ax7 = fig.add_subplot(gs[3,1])
+        ax7.plot(vt_no_fast, v_staggered_no_fast[:plot_num,:].T)
+
+        plt.tight_layout()
+        plt.show()
 
     def get_data(self, audio_raw):
         # - Create time base
@@ -307,6 +372,9 @@ class HeySnipsNetworkADS(BaseModel):
                 audio_raw = batch[0][0]
                 tgt_label = batch[0][1]
                 (ts_spiking_in, ts_rate_net_target_dynamics, ts_rate_out) = self.get_data(audio_raw=audio_raw)
+
+                if(self.verbose > 0 and epoch == 0 and batch_id == 0):
+                    self.check_balance(ts_spiking_in)
 
                 if((ts_rate_out.samples > 0.7).any()):
                     predicted_label_rate = 1
@@ -595,7 +663,7 @@ class HeySnipsNetworkADS(BaseModel):
         # - Save the network
         param_string = "Resources/hey-snips/"+self.node_prefix+"_test_acc"+str(test_acc)+"threshold"+str(self.threshold)+"eta" + \
                 str(self.net.lyrRes.eta_initial)+"val_acc"+str(self.best_val_acc)+"tau_slow" + \
-                str(self.tau_slow)+"tau_out"+str(self.tau_out)+"num_neurons"+str(self.num_neurons)+".json"
+                str(self.tau_slow)+"tau_out"+str(self.tau_out)+"num_neurons"+str(self.num_neurons)+"num_dist_weights"+str(self.num_distinct_weights)+".json"
 
         fn = os.path.join(self.base_path, param_string)
         # Save the model including the best validation score
