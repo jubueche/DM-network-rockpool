@@ -12,7 +12,7 @@ from SIMMBA.metrics import accuracy, confusion_mat, roc, roc_auc
 from rockpool.networks import network
 from rockpool.timeseries import TSContinuous, TSEvent
 from rockpool import layers
-from rockpool.layers import FFLIFJax_IO, ButterMelFilter, FFIAFNest, RecLIFJax_IO, RecRateEulerJax_IO, H_tanh 
+from rockpool.layers import FFLIFJax_IO, ButterMelFilter, FFIAFNest, RecLIFJax_IO, RecRateEulerJax_IO, H_tanh
 from sklearn import metrics
 import itertools
 from scipy.special import softmax

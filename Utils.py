@@ -68,7 +68,7 @@ def generate_xor_sample(total_duration, dt, amplitude=1, use_smooth=True, plot=F
         plt.plot(t, target)
         plt.show()
 
-    return (data, target)
+    return (data[:int(total_duration/dt)], target[:int(total_duration/dt)])
 
 def running_mean(x, N):
     cumsum = np.cumsum(np.insert(x, 0, 0, axis=0), axis=0) 
