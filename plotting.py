@@ -47,7 +47,7 @@ if(PLOT_TRAINING_NUM):
                 k_of_t[t] = k_of_t[t-1]
         f_k = lambda t : np.maximum(0,k_of_t[t])
 
-    fig = plt.figure(figsize=(6,4),constrained_layout=True)
+    fig = plt.figure(figsize=(6,2.36),constrained_layout=True)
     gs = fig.add_gridspec(2, 1) # Height ratio is 4 : 4 : 2
     ax1 = fig.add_subplot(gs[0,0])
     ax2 = ax1.twinx()
@@ -59,6 +59,7 @@ if(PLOT_TRAINING_NUM):
     ax3.set_ylim([0.0,1.0])
     ax4 = ax3.twinx()
     ax4.set_ylabel("k", color="r",rotation='horizontal')
+    ax3.set_xlabel("Signal iteration")
 
     for (te,num_neurons) in training_evolutions:
         print(te.keys())
@@ -68,9 +69,10 @@ if(PLOT_TRAINING_NUM):
     ax2.plot(np.arange(0,total_num_iter),f_k(np.arange(0,total_num_iter)),color="r")
     ax4.plot(np.arange(0,total_num_iter),f_k(np.arange(0,total_num_iter)),color="r")
 
-    ax1.legend(frameon=False, loc=0, prop={'size': 5})
+    ax1.legend(frameon=False, loc=3, prop={'size': 4})
     # ax2.legend()
     # ax3.legend()
+    plt.savefig("Latex/figures/figure6.png",dpi=1200)
     plt.show()
 
 

@@ -197,7 +197,7 @@ to memorize the first bump for some time.
   \caption{\textbf{A:} The spiking network consisting
   of 300 neurons successfully reconstructs the dynamics of the rate network.
   \textbf{B:} Due to the underlying balanced network, the membrane potentials show
-  irregular and distributed spiking activity. [This is not the case yet, but should follow from the theory]
+  irregular and distributed spiking activity.
   \textbf{C:} Our network predicts 98\% of 300 unseen samples correctly. Note that although the
   reconstruction of the dynamics is quite precise, the later obatined response matches
   the target response quite poorly. This is simply due to the fact that a 25-dimensional
@@ -225,7 +225,14 @@ after some number of signal iterations. The reason we chose a step function is t
 If $k$ is constantly changing, even slowly, the amount of error-feedback current that "helps" the network
 is constantly changing as well and does not give the slow recurrent weights a chance to adapt to the amount of "helper-current" that is
 present in the network. We achieved best performance when we gave the slow recurrent weights some time to adapt to the current level by just
-keeping $k$ constant for some time before decreasing it again.   
+keeping $k$ constant for some time before decreasing it again.
+
+\begin{figure}[!htb]
+  \includegraphics[width = \columnwidth, height=6cm]{figures/figure6.png}
+  \caption{As $k$ is slowly decreasing, the helping error current $I_{kD^Te}$ becomes negligible and the network must generalize. During this process, the
+  reconstruction error and the training accuracy increases/decreases a little bit. }
+  \label{fig:figure6}
+\end{figure}
 
 \begin{figure}[!htb]
   \includegraphics[width = \columnwidth, height=11cm]{figures/figure3.png}
@@ -242,6 +249,8 @@ keeping $k$ constant for some time before decreasing it again.
   For this experiment, 2000 neurons were used, but a network of 1000 neurons achieves similar performance.}
   \label{fig:figure3}
 \end{figure}
+
+\clearpage
 
 \subsection{Robustness}
 
@@ -269,7 +278,7 @@ testing accuracies for 1000 samples using the networks perturbed by various nois
 \end{figure}
 
 \begin{table}[!htb]
-  \begin{adjustbox}{center} \label{table:table1}
+  \begin{adjustbox}{center}
   \begin{tabular}{|l|l|l|l|l|l|}
   \hline
   {Original} & {Mismatch I} & {Mismatch II} & {Quantised to 4 bits} & {Quantised to 3 bits} & {Rate network} \\
@@ -282,11 +291,12 @@ testing accuracies for 1000 samples using the networks perturbed by various nois
   \end{tabular}
 \end{adjustbox}
 \caption{Test accuracies over 5 trials on 1000 samples for networks perturbed by different kinds of noise. [NEEDS FIXING]}
+\label{table:table1}
 \end{table}
 
 \begin{figure}[!htb]
   \includegraphics[width = \columnwidth, height=6cm]{figures/figure5.png}
-  \caption{\textbf{A} shows an example of such a recording. \textbf{B:} The membrane time-constants of neurons for different expected time-constants.
+  \caption{\textbf{A:} Recording of a neurons membrane potential on an analog mixed-signal neuromorphic chip. \textbf{B:} The membrane time-constants of neurons for different expected time-constants.
   It can be seen that as the time constant increases, also the standard deviation increases (thus $\sigma=0.2\mu$).
   The time-constants were computed by fitting an exponential to subthreshold recordings of each neuron.}
   \label{fig:figure5}
