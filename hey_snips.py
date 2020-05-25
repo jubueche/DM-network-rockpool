@@ -76,8 +76,9 @@ class HeySnipsNetworkADS(BaseModel):
 
         # - Everything is stored in base_path/Resources/hey-snips/
         self.base_path = "/home/julian/Documents/dm-network-rockpool/"
+        # self.base_path = "/home/julian_synsense_ai/dm-network-rockpool/"
         # - Every file saved by a node gets the prefix containing the node id
-        self.node_prefix = "node_"+str(self.node_id)
+        self.node_prefix = "node_"+str(self.node_id)+str(int(np.abs(np.random.randn()*1e10)))
 
         rate_net_path = os.path.join(self.base_path, "Resources/hey-snips/rate_heysnips_tanh_0_16.model")
         with open(rate_net_path, "r") as f:
