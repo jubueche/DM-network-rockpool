@@ -438,10 +438,10 @@ class HeySnipsNetworkADS(BaseModel):
                 plt.draw()
                 plt.pause(0.001)
 
-            # print("--------------------------------")
-            # print("TESTING batch", batch_id)
-            # print("True label", tgt_label, "Mismatch-One", predicted_label_mismatch_one, "Mismatch-Two", predicted_label_mismatch_two, "No mismatch", predicted_label_original, "Discretized 4bit", predicted_label_discretized_4_bit, "Discretized 3bit", predicted_label_discretized_3_bit, "Rate label", predicted_label_rate)
-            # print("--------------------------------")
+            print("--------------------------------")
+            print("TESTING batch", batch_id)
+            print("True label", tgt_label, "Mismatch-One", predicted_label_mismatch_one, "Mismatch-Two", predicted_label_mismatch_two, "No mismatch", predicted_label_original, "Discretized 4bit", predicted_label_discretized_4_bit, "Discretized 3bit", predicted_label_discretized_3_bit, "Rate label", predicted_label_rate)
+            print("--------------------------------")
 
             test_logger.add_predictions(pred_labels=[predicted_label_mismatch_one], pred_target_signals=[ts_rate_out.samples])
             fn_metrics('test', test_logger)
