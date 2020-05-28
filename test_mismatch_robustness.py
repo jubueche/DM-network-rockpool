@@ -302,13 +302,11 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Learn classifier using pre-trained rate network')
     
     parser.add_argument('--verbose', default=0, type=int, help="Level of verbosity. Default=0. Range: 0 to 2")
-    parser.add_argument('--threshold', default=0.7, type=float, help="Threshold for prediction")
-    parser.add_argument('--num_test', default=100, type=float, help="Number of test samples")
+    parser.add_argument('--num-test', default=100, type=float, help="Number of test samples")
     parser.add_argument('--std', default=0.2, type=float, help="Percentage of mean for the mismatch standard deviation")
 
     args = vars(parser.parse_args())
     verbose = args['verbose']
-    threshold = args['threshold']
     num_test = args['num_test']
     mismatch_std = args['std']
 
@@ -337,7 +335,7 @@ if __name__ == "__main__":
                                 num_test=num_test,
                                 mismatch_std=mismatch_std,
                                 num_epochs=0,
-                                threshold=threshold,
+                                threshold=0.7,
                                 eta=-1,
                                 verbose=verbose)
 
