@@ -6,17 +6,80 @@ matplotlib.rcParams['lines.linewidth'] = 0.5
 matplotlib.rcParams['lines.markersize'] = 0.5
 matplotlib.rcParams['axes.xmargin'] = 0
 import matplotlib.pyplot as plt
+from mpl_toolkits.axes_grid1.inset_locator import zoomed_inset_axes
 import json
+from Utils import filter_1d
 
-PLOT_TRAINING_NUM = True
+PLOT_FAST_NO_FAST_ROBUSTNESS = True
+PLOT_TRAINING_NUM = False
 PLOT_ROBUSTNESS = False
 PLOT_HEY_SNIPS = False
+PLOT_FAST_NO_FAST_EVOLUTION = False
 #### General format: Time x Features (e.g. 5000 x 128)
 duration = 5.0
 N = 1024
 
+if(PLOT_FAST_NO_FAST_ROBUSTNESS):
+    with open("/home/julian/Documents/dm-network-rockpool/Resources/hey-snips/orig_error_fast.npy", "rb") as f:
+        orig_error_fast = np.load(f)
+    with open("/home/julian/Documents/dm-network-rockpool/Resources/hey-snips/orig_error_no_fast.npy", "rb") as f:
+        orig_error_no_fast = np.load(f)
+    with open("/home/julian/Documents/dm-network-rockpool/Resources/hey-snips/error_fast.npy", "rb") as f:
+        error_fast = np.load(f)
+    with open("/home/julian/Documents/dm-network-rockpool/Resources/hey-snips/error_no_fast.npy", "rb") as f:
+        error_no_fast = np.load(f)
 
-if(PLOT_TRAINING_NUM):
+    # Plot over the course of training
+    fig = plt.figure(figsize=(6,1.57))
+    alpha = 0.9
+    plt.plot(filter_1d(error_fast, alpha=alpha), color="C1", label=r"Error clamped with $\mathbf{\Omega^f}$")
+    plt.plot(filter_1d(error_no_fast, alpha=alpha), color="C1", label=r"Error clamped without $\mathbf{\Omega^f}$",linestyle="--")
+    plt.plot(filter_1d(orig_error_fast, alpha=alpha), color="C7", label=r"Error original with $\mathbf{\Omega^f}$")
+    plt.plot(filter_1d(orig_error_no_fast, alpha=alpha), color="C7", label=r"Error original without $\mathbf{\Omega^f}$", linestyle="--")
+    plt.legend(frameon=False, loc=3, prop={'size': 4}, bbox_to_anchor=(0.0,0.0))
+    plt.ylim([0.0,0.7])
+    plt.ylabel(r"Reconstruction error")
+    plt.xlabel(r"Testing iteration")
+    plt.tight_layout()
+    plt.savefig("/home/julian/Documents/dm-network-rockpool/Latex/figures/figure10.png", dpi=1200)
+    plt.show()
+
+elif(PLOT_FAST_NO_FAST_EVOLUTION):
+    with open("Resources/hey-snips/node_7_test_acc0.8841158841158842threshold0.7eta0.0001val_acc0.9233870967741935tau_slow0.07tau_out0.07num_neurons768num_dist_weights-1_training_evolution.json", "rb") as f:
+        training_evolution_no_fast = json.load(f)
+    with open("Resources/hey-snips/node_8_test_acc0.8431568431568431threshold0.7eta0.0001val_acc0.8951612903225806tau_slow0.07tau_out0.07num_neurons768num_dist_weights-1_training_evolution.json", "rb") as f:
+        training_evolution_fast = json.load(f)
+
+    fig = plt.figure(figsize=(6,2.3),constrained_layout=True)
+    gs = fig.add_gridspec(2, 1)
+
+    ax1 = fig.add_subplot(gs[0,0])
+    ax1.set_title(r"Training accuracy")
+    ax1.set_ylim([0.0,1.0])
+    ax2 = fig.add_subplot(gs[1,0])
+    ax2.set_title(r"Reconstruction error")
+    ax2.set_ylim([0.0,1.0])
+    ax2.set_xlabel(r"Training iteration")
+
+    ax1.plot(training_evolution_no_fast["training_acc"], color="C0", linestyle="--", label=r"No $\mathbf{\Omega^f}$")
+    ax1.plot(training_evolution_fast["training_acc"], color="r", label=r"With $\mathbf{\Omega^f}$")
+    ax1.legend(frameon=False, loc=3, prop={'size': 4})
+
+    ax2.plot(training_evolution_no_fast["training_recon_acc"], color="C0", linestyle="--")
+    ax2.plot(training_evolution_fast["training_recon_acc"], color="r")
+
+    axins = zoomed_inset_axes(ax2, 3, loc=1) # zoom = 6
+    axins.axes.get_yaxis().set_visible(False)
+    axins.axes.get_xaxis().set_visible(False)
+    # axins.axis('off')
+    axins.plot(training_evolution_no_fast["training_recon_acc"][3500:3700], color="C0", linestyle="--")
+    axins.plot(training_evolution_fast["training_recon_acc"][3500:3700], color="r")
+
+    plt.tight_layout()
+    plt.savefig("/home/julian/Documents/dm-network-rockpool/Latex/figures/figure9.png", dpi=1200)
+    plt.show()
+
+elif(PLOT_TRAINING_NUM):
 
     training_evolutions = []
     with open("Resources/CloudModels/node_1_training_evolution.json", "rb") as f:
@@ -48,7 +111,7 @@ if(PLOT_TRAINING_NUM):
         f_k = lambda t : np.maximum(0,k_of_t[t])
 
     fig = plt.figure(figsize=(6,2.36),constrained_layout=True)
-    gs = fig.add_gridspec(2, 1) # Height ratio is 4 : 4 : 2
+    gs = fig.add_gridspec(2, 1)
     ax1 = fig.add_subplot(gs[0,0])
     ax2 = ax1.twinx()
     ax2.set_ylabel("k", color="r",rotation='horizontal')
@@ -64,7 +127,7 @@ if(PLOT_TRAINING_NUM):
     for (te,num_neurons) in training_evolutions:
         print(te.keys())
         ax1.plot(te['training_acc'], label=str(num_neurons))
-        ax3.plot(te['training_recon_acc'], label=str(num_neurons))
+        ax3.plot(te['training_recon_acc'])
     
     ax2.plot(np.arange(0,total_num_iter),f_k(np.arange(0,total_num_iter)),color="r")
     ax4.plot(np.arange(0,total_num_iter),f_k(np.arange(0,total_num_iter)),color="r")

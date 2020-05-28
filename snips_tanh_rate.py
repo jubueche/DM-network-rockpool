@@ -23,9 +23,8 @@ from torch import nn
 import librosa
 import os
 import sys
-if not sys.warnoptions:
-    import warnings
-    warnings.simplefilter("ignore")
+import warnings
+warnings.simplefilter("ignore")
 
 from jax import jit
 import jax.numpy as jnp

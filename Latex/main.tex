@@ -210,10 +210,12 @@ to memorize the first bump for some time.
 \end{figure}
 
 \subsection{Wake-phrase detection}
-To show that our approach also works on a more complex task, we used a network consisting of $N=1024$ spiking
-neurons that learned to imitate a rate network with $\hat{N}=128$ units. The rate network was trained to recognize
+To show that our approach also works on a more complex task, we used a network consisting of $N=768$ spiking
+neurons that learned to imitate a rate network with $\hat{N}=128$ units. Contrary to approaches like
+reservoir computing, our network operates in a precise spike-timing fashion, allowing us to use
+only 5-10 times as many spiking neurons as the rate network. The rate network was trained to recognize
 a wake-phrase using roughly 10k training samples and 5k validation and testing samples. While the rate network
-achieved a testing accuracy of ~90\%, our spiking imitator achieved ~85\% after training for only 10 epochs on about 500
+achieved a testing accuracy of ~90\%, our spiking imitator achieved ~87\% after training for only 10 epochs on about 1000
 training samples. We found that for training our network a learning rate schedule of the form $f(t)=a e^{(-t/b)}+c$
 worked best, where $a=\eta_{initial}$, $c=\eta_\textnormal{end}$ and $b = (T/2) / \textnormal{ln}(100)$ with $T$ being the
 total number of signal iterations. For the experiments conducted in this section, we chose $\eta_\textnormal{initial}=1e-4$ and $\eta_\textnormal{end}=1e-6$.
@@ -226,6 +228,7 @@ If $k$ is constantly changing, even slowly, the amount of error-feedback current
 is constantly changing as well and does not give the slow recurrent weights a chance to adapt to the amount of "helper-current" that is
 present in the network. We achieved best performance when we gave the slow recurrent weights some time to adapt to the current level by just
 keeping $k$ constant for some time before decreasing it again.
+
 
 \begin{figure}[!htb]
   \includegraphics[width = \columnwidth, height=6cm]{figures/figure6.png}
@@ -243,10 +246,10 @@ keeping $k$ constant for some time before decreasing it again.
   our network output closely follows the output of the rate network and thus makes the correct decision. In this experiment,
   a threshold at 0.6 determined whether the prediction was positive or negative. \textbf{D:} Negative samples on the other hand
   did not cause a rise in the output variable and were therefore correctly classified as negative samples. For this particular experiment,
-  the rate network achieved 91\% on a held out test set containing 300 samples. The spiking network achieved 89.03\% test accuracy,
+  the rate network achieved 90.31\% on a held out test set containing 1000 samples. The spiking network achieved 86.80\% test accuracy,
   while imitating the dynamics of the rate network (\textbf{E}). \textbf{F:} As expected, the spiking activity of the
-  network is distributed and does not exhibit any output dependent patterns [This is not the case yet, but should follow from the theory].
-  For this experiment, 2000 neurons were used, but a network of 1000 neurons achieves similar performance.}
+  network is distributed and does not exhibit any output dependent patterns.
+  For this experiment, 1024 neurons were used.}
   \label{fig:figure3}
 \end{figure}
 
@@ -261,10 +264,30 @@ equal to the original value and the standard deviation being 20\% of the mean. F
 the distributions of membrane time-constants on multiple cores on a neuromorphic processor, obtained through oscilloscope recordings.
 Figure \ref{fig:figure4} shows the robustness of the network to component mismatch and sudden neuron failure for 300ms. Since neuromorphic
 processors, analog or digital, are furthermore constrained in the resolution of their weights, which also can be seen as a type of noise,
-we reduced the total weights to 3 and 4 bit floating point values. To integrate the low-resolution weights into training, we kept a
+we reduced the total weights to 2, 3 and 4 bit floating point values. To integrate the low-resolution weights into training, we kept a
 full-precision version of the weights and adapted them using the updates computed from the low-resolution network. Not surprisingly,
 this method yields much better results than just reducing the precision of the weights post-learning. Table \ref{table:table1} shows the
-testing accuracies for 1000 samples using the networks perturbed by various noise sources.
+testing accuracies for 1000 samples using the networks perturbed by various noise sources and Figure \ref{fig:figure7} shows a box plot of
+the same results.
+
+\begin{table}[!htb]
+  \begin{adjustbox}{center}
+  \begin{tabular}{|l|l|l|l|l|}
+  \hline
+  {Original} & {Quantised to 4 bits} & {Quantised to 3 bits} & {Quantised to 2 bits} & {Rate network} \\
+  \hline
+  {$86.80 \pm 0.7\%$}  & {$86.37 \pm 0.68\%$}  & {$86.31 \pm 0.88\%$}  & {$82.87 \pm 1.04\%$}  & {$90.31 \pm 0.48\%$}       \\
+  \hline
+  \end{tabular}
+\end{adjustbox}
+\label{table:table1}
+\end{table}
+
+\begin{figure}[!htb]
+  \includegraphics[width = \columnwidth, height=6cm]{figures/figure7.png}
+  \caption{Test accuracies over 13 trials on 1000 samples for a network of 768 neurons perturbed by different kinds of noise.}
+  \label{fig:figure7}
+\end{figure}
 
 \begin{figure}[!htb]
   \includegraphics[width = \columnwidth, height=13cm]{figures/figure4.png}
@@ -277,22 +300,7 @@ testing accuracies for 1000 samples using the networks perturbed by various nois
   \label{fig:figure4}
 \end{figure}
 
-\begin{table}[!htb]
-  \begin{adjustbox}{center}
-  \begin{tabular}{|l|l|l|l|l|l|}
-  \hline
-  {Original} & {Mismatch I} & {Mismatch II} & {Quantised to 4 bits} & {Quantised to 3 bits} & {Rate network} \\
-  \hline
-  {85.31\%}  & {79.20\%}    & {85.91\%}     & {84.02\%}             & {84.02\%}             & {90.51\%}      \\
-  {84.62\%}  & {83.91\%}    & {85.11\%}     & {84.32\%}             & {84.32\%}             & {89.11\%}      \\
-  {83.33\%}  & {84.42\%}    & {86.21\%}     & {83.12\%}             & {83.12\%}             & {91.21\%}      \\
-  {84.92\%}  & {83.91\%}    & {85.11\%}     & {83.22\%}             & {83.22\%}             & {89.91\%}      \\
-  \hline
-  \end{tabular}
-\end{adjustbox}
-\caption{Test accuracies over 5 trials on 1000 samples for networks perturbed by different kinds of noise. [NEEDS FIXING]}
-\label{table:table1}
-\end{table}
+\clearpage
 
 \begin{figure}[!htb]
   \includegraphics[width = \columnwidth, height=6cm]{figures/figure5.png}
@@ -302,7 +310,47 @@ testing accuracies for 1000 samples using the networks perturbed by various nois
   \label{fig:figure5}
 \end{figure}
 
-[INTERESTING: FAST CONNS GOOD FOR NEURON LOSS?]
+Figure \ref{fig:figure8} shows the performance of two networks using $N=1024$ and $N=768$ neurons after simulated mismatch was
+applied to the involved time constants and spiking thresholds. We found that robustness to mismatch increases with the number
+of neurons used.
+
+\begin{figure}[!htb]
+  \includegraphics[width = \columnwidth, height=6cm]{figures/figure8.png}
+  \caption{Mismatch robustness of a network with 1024 (l) and 768 (r) neurons.}
+  \label{fig:figure8}
+\end{figure}
+
+\subsection{Role of $\mathbf{\Omega^f}$}
+As previously stated in section \ref{sec:learning_rule}, we found that our network is able to reconstruct the non-linear dynamics
+of a rate network \textit{without} the dendritic non-linearities $\phi(\mathbf{M}r+\theta)$ and \textit{without} the fast connections $\mathbf{\Omega^f}$.  
+If anything, we found that using the fast recurrent connections leads to a degradation in accuracy as Figure \ref{fig:figure9} illustrates.
+From \cite{Bourdoukan:2012:LOS:2999325.2999390}, we know that EBNs lead to sparser and more distributed spike trains and result in a
+lower reconstruction error in an autoencoder-like setting. We therefore, prior to training, compared the spike-trains, membrane potentials and
+reconstruction error of a network with and without $\mathbf{\Omega^f}$ to make sure that our EBN actually met these expectations. Although the
+reconstruction error of the EBN was lower than the standard network (with $\mathbf{\Omega^s}$ set to $\mathbf{0}$), the network without $\mathbf{\Omega^f}$
+constantly showed a lower reconstruction error.
+
+\begin{figure}[!htb]
+  \includegraphics[width = \columnwidth, height=6cm]{figures/figure9.png}
+  \caption{Training accuracy (top) and reconstruction error (bottom) over the course of
+  training for a network with and without $\mathbf{\Omega^f}$.}
+  \label{fig:figure9}
+\end{figure}
+
+Similar to the findings in \cite{alemi2017learning}, we could however show that a network with $\mathbf{\Omega^f}$ had a much lower
+reconstruction error when a certain percentage of neurons is clamped to $V_{\textnormal{rest}}$ as Figure \ref{fig:figure10} shows.
+
+\begin{figure}[!htb]
+  \includegraphics[width = \columnwidth, height=4cm]{figures/figure10.png}
+  \caption{The reconstruction error of the "clamped" network with $\mathbf{\Omega^f}$ is constantly lower than the one
+  without $\mathbf{\Omega^f}$, while the reconstruction error for the original network without $\mathbf{\Omega^f}$
+  has lower reconstruction error and therefore better classification accuracy.}
+  \label{fig:figure10}
+\end{figure}
+
+\clearpage
+
+\section{Discussion}
 
 \clearpage
 

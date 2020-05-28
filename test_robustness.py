@@ -43,7 +43,6 @@ class HeySnipsNetworkADS(BaseModel):
                  num_val,
                  num_test,
                  mismatch_std,
-                 num_bits,
                  num_epochs,
                  threshold,
                  eta,
@@ -101,9 +100,9 @@ class HeySnipsNetworkADS(BaseModel):
 
         # - Create NetworkADS
         model_path_ads_net = "Resources/CloudModels/node_1_test_acc0.8401598401598401threshold0.7eta0.0001val_acc0.86tau_slow0.07tau_out0.07num_neurons1024.json"
-        model_path_ads_net_2bit = "Resources/CloudModels/node_1_test_acc0.8401598401598401threshold0.7eta0.0001val_acc0.86tau_slow0.07tau_out0.07num_neurons1024.json"
-        model_path_ads_net_3bit = "Resources/CloudModels/node_1_test_acc0.8401598401598401threshold0.7eta0.0001val_acc0.86tau_slow0.07tau_out0.07num_neurons1024.json"
-        model_path_ads_net_4bit = "Resources/CloudModels/node_1_test_acc0.8401598401598401threshold0.7eta0.0001val_acc0.86tau_slow0.07tau_out0.07num_neurons1024.json"
+        model_path_ads_net_2bit = "Resources/CloudModels/node_0tmp_2bits_85_val_acc.json"
+        model_path_ads_net_3bit = "Resources/CloudModels/node_1tmp_3bits_88_val_acc.json"
+        model_path_ads_net_4bit = "Resources/CloudModels/node_2tmp_4bits_88_val_acc.json"
 
         if(os.path.exists(model_path_ads_net)):
             self.net_mismatch_one = NetworkADS.load(model_path_ads_net)
@@ -138,11 +137,6 @@ class HeySnipsNetworkADS(BaseModel):
             self.net_mismatch_two.lyrRes.v_thresh = np.abs(np.random.randn(N)*self.mismatch_std*np.mean(self.net_mismatch_two.lyrRes.v_thresh) + np.mean(self.net_mismatch_two.lyrRes.v_thresh))
 
             if(self.verbose > 1):
-                plt.subplot(121)
-                plt.hist(self.net_discretized_4_bit.lyrRes.weights_slow.ravel(), bins=2**num_bits)
-                plt.subplot(122)
-                plt.hist(self.net_original.lyrRes.weights_slow.ravel(), bins=50)
-                plt.show()
 
                 # - Plotting
                 plt.subplot(511)
@@ -438,10 +432,10 @@ class HeySnipsNetworkADS(BaseModel):
                 plt.draw()
                 plt.pause(0.001)
 
-            # print("--------------------------------")
-            # print("TESTING batch", batch_id)
-            # print("True label", tgt_label, "Mismatch-One", predicted_label_mismatch_one, "Mismatch-Two", predicted_label_mismatch_two, "No mismatch", predicted_label_original, "Discretized 4bit", predicted_label_discretized_4_bit, "Discretized 3bit", predicted_label_discretized_3_bit, "Rate label", predicted_label_rate)
-            # print("--------------------------------")
+            print("--------------------------------")
+            print("TESTING batch", batch_id)
+            print("True label", tgt_label, "Mismatch-One", predicted_label_mismatch_one, "Mismatch-Two", predicted_label_mismatch_two, "No mismatch", predicted_label_original, "Discretized 4bit", predicted_label_discretized_4_bit, "Discretized 3bit", predicted_label_discretized_3_bit, "Rate label", predicted_label_rate)
+            print("--------------------------------")
 
             test_logger.add_predictions(pred_labels=[predicted_label_mismatch_one], pred_target_signals=[ts_rate_out.samples])
             fn_metrics('test', test_logger)
@@ -463,13 +457,11 @@ if __name__ == "__main__":
     parser.add_argument('--verbose', default=0, type=int, help="Level of verbosity. Default=0. Range: 0 to 2")
     parser.add_argument('--num-test', default=10, type=float, help="Number of test samples")
     parser.add_argument('--std', default=0.2, type=float, help="Percentage of mean for the mismatch standard deviation")
-    parser.add_argument('--num-bits', default=4, type=int, help="Number of bits required to encode whole spectrum of weights")
 
     args = vars(parser.parse_args())
     verbose = args['verbose']
     num_test = args['num_test']
     mismatch_std = args['std']
-    num_bits = args['num_bits']
 
     batch_size = 1
     percentage_data = 1.0
@@ -494,7 +486,6 @@ if __name__ == "__main__":
                                 num_val=-1,
                                 num_test=num_test,
                                 mismatch_std=mismatch_std,
-                                num_bits=num_bits,
                                 num_epochs=0,
                                 threshold=0.7,
                                 eta=-1,
