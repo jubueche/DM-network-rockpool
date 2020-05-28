@@ -15,6 +15,7 @@ from rockpool.timeseries import TSContinuous
 from jax import jit
 import jax.numpy as jnp
 from typing import Dict, Tuple, Any, Callable, Union, List, Optional
+import os
 
 Params = Union[Dict, Tuple, List]
 
@@ -83,9 +84,9 @@ duration = 1.0 # s
 dt = 1e-3
 amplitude = 1.0
 num_units = 64
-noise_std = 0.1
-num_epochs = 500
-num_batches = 100
+noise_std = 0.0
+num_epochs = 100
+num_batches = 500
 num_channels = 1
 num_targets = 1
 time_base = np.arange(0,duration,dt)
@@ -153,14 +154,24 @@ for epoch in range(num_epochs):
         num_samples += 1
         mvg_avg_mse /= num_samples
 
-        print(f"Moving average is {mvg_avg_mse}")
-            
-        # sr = np.max(np.abs(np.linalg.eigvals(lyr_hidden.w_recurrent)))
-        # print(f"spectral radius {sr}")
+        print(f"Moving average is {mvg_avg_mse} tau max {np.max(lyr_hidden.tau)} mean {np.mean(lyr_hidden.tau)}")
+        print(f"bias max {np.max(lyr_hidden.bias)} mean {np.mean(lyr_hidden.bias)}")
 
-        # w_diag = lyr_hidden.w_recurrent * np.eye(len(lyr_hidden.w_recurrent))
-        # print(f"diag weights {np.mean(np.abs(w_diag))}")
 
-        # print(f"bias max {np.max(lyr_hidden.bias)} mean {np.mean(lyr_hidden.bias)}")
-        # print(f"tau max {np.max(lyr_hidden.tau)} mean {np.mean(lyr_hidden.tau)}")
-        # print(f"w_out_max {np.max(np.abs(lyr_hidden.w_out))} mean {np.mean(lyr_hidden.w_out)}")
+# - End training
+model_path = "/home/julian/Documents/dm-network-rockpool/Resources/temporal-xor/temporal_xor_rate_model.json"
+if(os.path.exists(model_path)):
+    while(True):
+        print("Override trained model at %s Y[n]?" % model_path)
+        override = input()
+        if(override == "Y"):
+            lyr_hidden.save_layer(model_path)
+            print("Saved layer")
+            break
+        elif(override == "n"):
+            print("Not saving layer")
+            break
+else:
+    # Save layer
+    lyr_hidden.save_layer(model_path)
+    print("Saved layer")
