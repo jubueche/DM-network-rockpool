@@ -10,7 +10,8 @@ from mpl_toolkits.axes_grid1.inset_locator import zoomed_inset_axes
 import json
 from Utils import filter_1d
 
-PLOT_FAST_NO_FAST_ROBUSTNESS = True
+PLOT_FAST_NO_FAST_ROBUSTNESS = False
+PLOT_TEMPORAL_XOR = False
 PLOT_TRAINING_NUM = False
 PLOT_ROBUSTNESS = False
 PLOT_HEY_SNIPS = False
@@ -462,4 +463,124 @@ elif(PLOT_HEY_SNIPS):
     v[:,:plot_num_v] += stagger_v
 
     plt.plot(times[(times > t_start) & (times < t_stop)], v[(times > t_start) & (times < t_stop),:plot_num_v])
+    plt.show()
+
+
+
+elif(PLOT_TEMPORAL_XOR):
+    with open('Resources/Plotting/TemporalXOR/final_out_0.npy', 'rb') as f:
+        final_out_0 = np.load(f)
+    with open('Resources/Plotting/TemporalXOR/final_out_1.npy', 'rb') as f:
+        final_out_1 = np.load(f)
+    with open('Resources/Plotting/TemporalXOR/final_out_2.npy', 'rb') as f:
+        final_out_2 = np.load(f)
+    with open('Resources/Plotting/TemporalXOR/final_out_3.npy', 'rb') as f:
+        final_out_3 = np.load(f)
+
+    with open('Resources/Plotting/TemporalXOR/input_0.npy', 'rb') as f:
+        input_0 = np.load(f)
+    with open('Resources/Plotting/TemporalXOR/input_1.npy', 'rb') as f:
+        input_1 = np.load(f)
+    with open('Resources/Plotting/TemporalXOR/input_2.npy', 'rb') as f:
+        input_2 = np.load(f)
+    with open('Resources/Plotting/TemporalXOR/input_3.npy', 'rb') as f:
+        input_3 = np.load(f)
+
+    with open('Resources/Plotting/TemporalXOR/target_0.npy', 'rb') as f:
+        target_0 = np.load(f)
+    with open('Resources/Plotting/TemporalXOR/target_1.npy', 'rb') as f:
+        target_1 = np.load(f)
+    with open('Resources/Plotting/TemporalXOR/target_2.npy', 'rb') as f:
+        target_2 = np.load(f)
+    with open('Resources/Plotting/TemporalXOR/target_3.npy', 'rb') as f:
+        target_3 = np.load(f)
+
+    with open('Resources/Plotting/TemporalXOR/spike_channels.npy', 'rb') as f:
+        spike_channels = np.load(f)
+    with open('Resources/Plotting/TemporalXOR/spike_times.npy', 'rb') as f:
+        spike_times = np.load(f)
+
+    with open('Resources/Plotting/TemporalXOR/reconstructed_dynamics.npy', 'rb') as f:
+        reconstructed_dynamics = np.load(f)
+        reconstructed_dynamics = reconstructed_dynamics.T
+    with open('Resources/Plotting/TemporalXOR/target_dynamics.npy', 'rb') as f:
+        target_dynamics = np.load(f)
+    plot_num_dyn = 6
+    stagger_dyn = np.ones((target_dynamics.shape[0],plot_num_dyn))
+    for i in range(plot_num_dyn):
+        stagger_dyn[:,i] *= i
+    target_dynamics[:,:plot_num_dyn] += stagger_dyn
+    reconstructed_dynamics[:,:plot_num_dyn] += stagger_dyn
+    
+    with open('Resources/Plotting/TemporalXOR/v.npy', 'rb') as f:
+        v = np.load(f)
+        v = v.T
+    with open('Resources/Plotting/TemporalXOR/vt.npy', 'rb') as f:
+        vt = np.load(f)
+    plot_num_v = 6
+    stagger_v = np.ones((v.shape[0],plot_num_v))
+    for i in range(plot_num_v):
+        stagger_v[:,i] *= i
+    v[:,:plot_num_v] += stagger_v
+    
+    fig = plt.figure(figsize=(6,4.3),constrained_layout=True)
+    gs = fig.add_gridspec(6, 2)
+
+    time_base = np.arange(0,1.0,0.001)
+    colors_dyn = [("C%d"%i) for i in range(2,plot_num_dyn+2)]
+
+    ax0 = fig.add_subplot(gs[:2,0])
+    l1 = ax0.plot(time_base, target_dynamics[:,:plot_num_dyn], linestyle="--")
+    l2 = ax0.plot(time_base, reconstructed_dynamics[:,:plot_num_dyn])
+    for line, color in zip(l1,colors_dyn):
+        line.set_color(color)
+    for line, color in zip(l2,colors_dyn):
+        line.set_color(color)
+    lines = [l1[0],l2[0]]
+    ax0.legend(lines, [r"$\mathbf{x}$", r"$\tilde{\mathbf{x}}$"], loc=0, prop={'size': 5})
+    leg = ax0.get_legend()
+    leg.legendHandles[0].set_color('black')
+    leg.legendHandles[1].set_color('black')
+    ax0.set_title(r"\textbf{A)} Reconstructed vs. target dynamics")
+    ax0.axes.get_yaxis().set_visible(False)
+
+    ax1 = fig.add_subplot(gs[2:4,0])
+    ax1.plot(vt, v[:,:plot_num_v], color="k")
+    ax1.set_title(r"\textbf{B)} Membrane potentials")
+    ax1.axes.get_xaxis().set_visible(False)
+    ax1.axes.get_yaxis().set_visible(False)
+
+    ax2 = fig.add_subplot(gs[0,1])
+    ax2.plot(time_base, input_0, color="k", label=r"c")
+    ax2.plot(time_base, target_0, color="g", linestyle="--", label=r"$y_{\textnormal{target}}$")
+    ax2.plot(time_base, final_out_0, color="C4", label=r"$y_{\textnormal{spiking}}$")
+    ax2.set_title(r"\textbf{C)} Input \& Target vs. network output")
+    ax2.legend(frameon=True, loc=1, prop={'size': 5})
+
+    ax3 = fig.add_subplot(gs[1,1])
+    ax3.plot(time_base, input_1, color="k", label=r"c")
+    ax3.plot(time_base, target_1, color="g", linestyle="--")
+    ax3.plot(time_base, final_out_1, color="C4")
+    ax3.axes.get_xaxis().set_visible(False)
+    ax3.axes.get_yaxis().set_visible(False)
+
+    ax4 = fig.add_subplot(gs[2,1])
+    ax4.plot(time_base, input_2, color="k", label=r"c")
+    ax4.plot(time_base, target_2, color="g", linestyle="--")
+    ax4.plot(time_base, final_out_2, color="C4")
+    ax4.axes.get_xaxis().set_visible(False)
+    ax4.axes.get_yaxis().set_visible(False)
+
+    ax5 = fig.add_subplot(gs[3,1])
+    ax5.plot(time_base, input_3, color="k", label=r"c")
+    ax5.plot(time_base, target_3, color="g", linestyle="--")
+    ax5.plot(time_base, final_out_3, color="C4")
+    ax5.axes.get_xaxis().set_visible(False)
+    ax5.axes.get_yaxis().set_visible(False)
+
+    ax6 = fig.add_subplot(gs[4:6,:])
+    ax6.scatter(spike_times, spike_channels, color="k")
+    ax6.axes.get_xaxis().set_visible(False)
+
+    plt.savefig("/home/julian/Documents/dm-network-rockpool/Latex/figures/figure2.png", dpi=1200)
     plt.show()

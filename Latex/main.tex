@@ -186,31 +186,34 @@ and $r(t)$ are the filtered spike trains at time $t$ of the spiking network. \\
 \section{Results}
 
 \subsection{Temporal XOR}
-In this experiment, a rate network of 25 neurons was trained to perform
+In this experiment, a rate network of 64 neurons was trained to perform
 temporal XOR on a one-dimensional input. The network was presented with two bumps
 of magnitude $\pm 1$, indicating True or False. The bumps had a variable length
-between 100 and 230ms and were separated by a 100ms pause, requiring the network
+between 100 and 230ms and were separated by a ~70ms pause, requiring the network
 to memorize the first bump for some time. 
 
 \begin{figure}[!htb]
   \includegraphics[width = \columnwidth, height=10cm]{figures/figure2.png}
   \caption{\textbf{A:} The spiking network consisting
-  of 300 neurons successfully reconstructs the dynamics of the rate network.
-  \textbf{B:} Due to the underlying balanced network, the membrane potentials show
-  irregular and distributed spiking activity.
-  \textbf{C:} Our network predicts 98\% of 300 unseen samples correctly. Note that although the
-  reconstruction of the dynamics is quite precise, the later obatined response matches
-  the target response quite poorly. This is simply due to the fact that a 25-dimensional
-  rate network was the smallest possible rate network we could train to solve the task, meaning
-  that every dimension of the dynamics is necessary to compute the final output to a high
-  precision. To see that this is actually the reason, consider the second experiment:
-  The reconstruction of the 128-dimensional dynamics is much worse compared to the temporal
-  XOR task, but the final output still matches the actual target quite well.}
+  of 380 neurons successfully reconstructs the dynamics of the rate network.
+  \textbf{B:} The membrane potentials and spike trains show
+  irregular and distributed spiking activity, although no fast recurrent connections were used.
+  \textbf{C:} The final output of the network is computed using the read-out matrix from the
+  rate network and the reconstructed dynamics of the spiking network. Our network successfully
+  learns the non-linear dynamics of the rate network to a precision high enough to predict the
+  temporal XOR target with negligible error.}
   \label{fig:figure2}
 \end{figure}
 
+In practice, we found that using a narrow target response degrades performance drastically
+since the dynamics of the rate network are more abrupt. Usually, having longer target responses
+yields smoother rate network dynamics, which makes it easier for the spiking network to learn.
+Our network learns this temporal XOR task to 99.99\% accuracy using only 6 times as many neurons
+as the rate network. We however note that the input space is very small and that both networks
+might simply overfit to the generated data.
+
 \subsection{Wake-phrase detection}
-To show that our approach also works on a more complex task, we used a network consisting of $N=768$ spiking
+To show that our approach also works on a more complex and realistic task, we used a network consisting of $N=768$ spiking
 neurons that learned to imitate a rate network with $\hat{N}=128$ units. Contrary to approaches like
 reservoir computing, our network operates in a precise spike-timing fashion, allowing us to use
 only 5-10 times as many spiking neurons as the rate network. The rate network was trained to recognize

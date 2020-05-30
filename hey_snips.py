@@ -110,7 +110,7 @@ class HeySnipsNetworkADS(BaseModel):
 
 
         # - Create NetworkADS
-        model_path_ads_net = os.path.join(self.base_path,"Resources/x")
+        model_path_ads_net = os.path.join(self.base_path,"Resources/")
 
         if(os.path.exists(model_path_ads_net)):
             self.net = NetworkADS.load(model_path_ads_net)

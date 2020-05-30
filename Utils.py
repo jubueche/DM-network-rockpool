@@ -35,6 +35,17 @@ def generate_xor_sample(total_duration, dt, amplitude=1, use_smooth=True, plot=F
         a2 = 1
     else:
         a2 = -1
+
+    input_label = 0
+    if(a1==1 and a2==1):
+        input_label = 0
+    elif(a1==1 and a2==-1):
+        input_label = 1
+    elif(a1==-1 and a2==1):
+        input_label = 2
+    else:
+        input_label = 3
+
     data[(start_first <= t) & (t < end_first)] = a1
     data[(start_second <= t) & (t < end_second)] = a2
 
@@ -52,7 +63,7 @@ def generate_xor_sample(total_duration, dt, amplitude=1, use_smooth=True, plot=F
     else:
         ar = -1.0
     
-    target[int(1/dt*(end_second+0.2))] = ar
+    target[int(1/dt*(end_second+0.05)):int(1/dt*(end_second))+int(1/dt*0.3)] = ar
     sigma = 20
     w = (1/(sigma*np.sqrt(2*np.pi)))* np.exp(-((np.linspace(1,1000,int(1/dt))-500)**2)/(2*sigma**2))
     w = w / np.sum(w)
@@ -68,7 +79,7 @@ def generate_xor_sample(total_duration, dt, amplitude=1, use_smooth=True, plot=F
         plt.plot(t, target)
         plt.show()
 
-    return (data[:int(total_duration/dt)], target[:int(total_duration/dt)])
+    return (data[:int(total_duration/dt)], target[:int(total_duration/dt)], input_label)
 
 def running_mean(x, N):
     cumsum = np.cumsum(np.insert(x, 0, 0, axis=0), axis=0) 
