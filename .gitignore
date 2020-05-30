@@ -7,3 +7,4 @@ mypy.ini
 /Resources/hey-snips/tmp.json
 /Resources/Plotting
 /Resources/CloudModels
+/cached/
