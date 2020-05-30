@@ -12,7 +12,7 @@ from SIMMBA.metrics import accuracy, confusion_mat, roc, roc_auc
 from rockpool.networks import network
 from rockpool.timeseries import TSContinuous, TSEvent
 from rockpool import layers
-from rockpool.layers import FFLIFJax_IO, ButterMelFilter, FFIAFNest, RecLIFJax_IO, RecRateEulerJax_IO, H_tanh
+from rockpool.layers import FFLIFJax_IO, ButterMelFilter, FFIAFNest, RecLIFJax_IO, RecRateEulerJax_IO, H_ReLU, H_tanh 
 from sklearn import metrics
 import itertools
 from scipy.special import softmax
@@ -45,8 +45,7 @@ def my_loss(
     reg_max_tau: float = 1.0,
     reg_l2_rec: float = 1.0,
     reg_diag_weights: float = 1.0,
-    reg_bias: float = 1.0,
-    reg_l2_w_out : float = 1.0
+    reg_bias: float = 1.0
 ) -> float:
     """
     Loss function for target versus output
@@ -82,14 +81,11 @@ def my_loss(
     # - Measure recurrent L2 norm
     w_res_norm = reg_l2_rec * jnp.mean(params["w_recurrent"] ** 2)
 
-    # - Enforce uniform read-out weights
-    loss_w_out = reg_l2_w_out * jnp.mean(params["w_out"]**2)
-
     # punish large biases
     loss_bias = reg_bias * jnp.mean(params['bias'] ** 2)
 
     # - Loss: target/output squared error, time constant constraint, recurrent weights norm, activation penalty
-    fLoss = mse + tau_loss + w_res_norm + max_tau_loss + loss_bias + loss_diag + loss_w_out
+    fLoss = mse + tau_loss + w_res_norm + max_tau_loss + loss_bias + loss_diag
 
     # - Return loss
     return fLoss
@@ -98,31 +94,29 @@ def my_loss(
 
 class RNN(BaseModel):
     def __init__(self,
-                 config,
                  labels, 
                  fs=16000.,
+                 downsample=200,
                  plot=False,
                  train=True,
                  num_val=np.inf,
-                 name="HeySnips-RNN",
+                 name="SNIPS-RNN",
                  version="0.1"):
 
         super(RNN, self).__init__(name, version)
 
-        plt.ioff()
-
-        self.config = config
         self.plot = plot
 
         self.mov_avg_acc = 0.
         self.num_samples = 0
 
         self.fs = fs
-        self.dt = 0.0001
+        self.dt = 0.001
+        self.downsample = downsample 
 
         self.num_channels = 16 
-        self.num_neurons = 128
-        self.num_targets = 1 #len(labels) 
+        self.num_neurons = 128 
+        self.num_targets = len(labels) 
 
         self.num_epochs = 1
 
@@ -136,16 +130,8 @@ class RNN(BaseModel):
 
         ##### CREATE NETWORK ######
 
-        self.lyr_filt = ButterMelFilter(fs=fs,
-                                        num_filters=self.num_channels,
-                                        cutoff_fs=400.,
-                                        filter_width=2.,
-                                        num_workers=4,
-                                        name='filter')
-
-
-        if os.path.exists("rate_heysnips_tanh_0.model"):
-            with open("rate_heysnips_tanh_0.model", "r") as f:
+        if os.path.exists("rate_heysnips_better.json"):
+            with open("rate_heysnips_better.json", "r") as f:
                 config = json.load(f)
 
             w_in = np.array(config['w_in'])
@@ -157,8 +143,7 @@ class RNN(BaseModel):
             w_in = 10.0 * (np.random.rand(self.num_channels, self.num_neurons) - .5)
             w_rec = 0.2 * (np.random.rand(self.num_neurons, self.num_neurons) - .5)
             w_rec -= np.eye(self.num_neurons) * w_rec
-            # w_out = 1.0 * (np.random.rand(self.num_neurons, self.num_targets) - .4)
-            w_out = 0.4*np.random.uniform(size=(self.num_neurons, self.num_targets))-0.2
+            w_out = 1.0 * (np.random.rand(self.num_neurons, self.num_targets) - .4)
             bias = 0.0 * (np.random.rand(self.num_neurons) - 0.5)
             tau = np.linspace(0.01, 0.1, self.num_neurons)
 
@@ -178,14 +163,11 @@ class RNN(BaseModel):
         self.best_loss = float('inf')
         self.max_sample_length = 0.
 
-    def terminate(self):
-        pass
-
     def save(self, fn):
         if self.use_train:
             self.lyr_hidden.save_layer(fn)
 
-    def plot_activity(self, ts_ext, ts_filt, ts_inp, ts_res, ts_out, ts_tgt):
+    def plot_activity(self, ts_ext, ts_filt, ts_res, ts_out, ts_tgt):
         fig = plt.figure(figsize=[16, 10])
         ax1 = fig.add_subplot(5, 1, 1)
         if not ts_ext is None:
@@ -194,49 +176,36 @@ class RNN(BaseModel):
         if not ts_filt is None:
             ts_filt.plot()
         ax3 = fig.add_subplot(5, 1, 3, sharex=ax1)
-        if not ts_inp is None:
-            ts_inp.plot()
-        ax4 = fig.add_subplot(5, 1, 4, sharex=ax1)
         if not ts_res is None:
             ts_res.plot()
-        ax5 = fig.add_subplot(5, 1, 5, sharex=ax1)
-        ax5.set_prop_cycle(None)
+        ax4 = fig.add_subplot(5, 1, 5, sharex=ax1)
+        ax4.set_prop_cycle(None)
         if not ts_out is None:
             ts_out.plot(linestyle='--')
-        ax5.set_prop_cycle(None)
+        ax4.set_prop_cycle(None)
         if not ts_tgt is None:
             ts_tgt.plot()
 
+        #plt.show(block=True)
+        fig.savefig("activity_snips.png", dpi=300)
+        plt.close('all')
+
     def predict(self, batch, evolve_hidden=True):
 
-        self.lyr_filt.reset_time()
-        self.lyr_hidden.reset_time()
-
-        samples = np.hstack([s[0] for s in batch])
+        audio = np.hstack([s[0][0] for s in batch])
+        filtered = np.hstack([s[0][1] for s in batch])
         tgt_signals = np.array([s[2] for s in batch][0])
 
-        times_filt = np.arange(0, len(samples) / self.fs, 1/self.fs)
-
-        ts_batch = TSContinuous(times_filt[:len(samples)], samples[:len(times_filt)])
-        ts_tgt_batch = TSContinuous(times_filt[:len(tgt_signals)], tgt_signals[:len(times_filt)])
-
-        ts_filt = self.lyr_filt.evolve(ts_batch)
-
-        if np.any(np.isnan(ts_filt.samples)):
-            print(1/0)
-        ts_filt.samples[np.isnan(ts_filt.samples)] = 0
-
-        if np.any(np.isnan(ts_tgt_batch.samples)):
-            print(1/0)
-        ts_tgt_batch.samples[np.isnan(ts_tgt_batch.samples)] = 0
+        ts_audio = TSContinuous.from_clocked(audio, dt=1/self.fs, t_start=self.lyr_hidden.t)
+        ts_filt = TSContinuous.from_clocked(filtered, dt=1/self.downsample, t_start=self.lyr_hidden.t)
+        ts_tgt = TSContinuous.from_clocked(tgt_signals, dt=1/self.downsample, t_start=self.lyr_hidden.t)
 
         if evolve_hidden:
             ts_out = self.lyr_hidden.evolve(ts_filt)
         else:
             ts_out = None
 
-        return ts_batch, ts_filt, ts_out, ts_tgt_batch
-
+        return ts_audio, ts_filt, ts_out, ts_tgt
 
 
     def train(self, data_loader, fn_metrics):
@@ -254,33 +223,27 @@ class RNN(BaseModel):
                 if not self.use_train:
                     break
 
-                t0 = time.time()
-
                 ts_ext, ts_filt, ts_out, ts_tgt = self.predict(batch, evolve_hidden=False)
-
+                
                 l_fcn, g_fcn, o_fcn = self.lyr_hidden.train_output_target(ts_filt,
-                                                                            ts_tgt,
-                                                                            is_first = (batch_id == 0) and (epoch == 0),
-                                                                            opt_params={"step_size": 1e-3},
-                                                                            loss_fcn=my_loss,
-                                                                            loss_params={"lambda_mse": 1.0,
-                                                                                        "reg_tau": 1000000.0,
-                                                                                        "reg_l2_rec": 1.0,
-                                                                                        "min_tau": 0.015,
-                                                                                        "reg_max_tau": 1.0,
-                                                                                        "reg_diag_weights": 1.0,
-                                                                                        "reg_bias": 1000.0,
-                                                                                        "reg_l2_w_out": 1000.0 })
+                                                                          ts_tgt,
+                                                                          is_first = (batch_id == 0) and (epoch == 0),
+                                                                          opt_params={"step_size": 1e-3},
+                                                                          loss_fcn=my_loss,
+                                                                          loss_params={"lambda_mse": 1.0,
+                                                                                       "reg_tau": 1000000.0,
+                                                                                       "reg_l2_rec": 1.0,
+                                                                                       "min_tau": 0.015,
+                                                                                       "reg_max_tau": 1.0,
+                                                                                       "reg_diag_weights": 1.0,
+                                                                                       "reg_bias": 1.0 })
 
-
-                t1 = time.time()
-                print(t1-t0)
 
                 loss = np.array(l_fcn()).tolist()
                 
                 ts_out = self.lyr_hidden.evolve(ts_filt)
 
-                if np.any(ts_out.samples > self.threshold):
+                if np.any(ts_out.samples[:, 1] > self.threshold):
                     predicted_label = 1
                 else:
                     predicted_label = 0
@@ -290,32 +253,21 @@ class RNN(BaseModel):
                 pred_tgt_signals = ts_out.samples
                 pred_tgt_signals[np.isnan(pred_tgt_signals)] = 0
 
-
                 sr = np.max(np.abs(np.linalg.eigvals(self.lyr_hidden.w_recurrent)))
-                print(f"spectral radius {sr}")
+                print(f"spectral radius {sr}",flush=True)
 
                 w_diag = self.lyr_hidden.w_recurrent * np.eye(len(self.lyr_hidden.w_recurrent))
-                print(f"diag weights {np.mean(np.abs(w_diag))}")
+                print(f"diag weights {np.mean(np.abs(w_diag))}",flush=True)
 
-                print(f"bias max {np.max(self.lyr_hidden.bias)} mean {np.mean(self.lyr_hidden.bias)}")
-                print(f"tau max {np.max(self.lyr_hidden.tau)} mean {np.mean(self.lyr_hidden.tau)}")
-                print(f"w_out_max {np.max(np.abs(self.lyr_hidden.w_out))} mean {np.mean(self.lyr_hidden.w_out)}")
-
-                if np.any(np.isnan(self.lyr_hidden.w_in)):
-                    print("NAN in input weights", 1/0)
-
-                if np.any(np.isnan(self.lyr_hidden.w_recurrent)):
-                    print("NAN in recurrent weights", 1/0)
-
-                if np.any(np.isnan(self.lyr_hidden.w_out)):
-                    print("NAN in output weights", 1/0)
+                print(f"bias max {np.max(self.lyr_hidden.bias)} mean {np.mean(self.lyr_hidden.bias)}",flush=True)
+                print(f"tau max {np.max(self.lyr_hidden.tau)} mean {np.mean(self.lyr_hidden.tau)}",flush=True)
 
                 self.mov_avg_acc = self.mov_avg_acc * self.num_samples + int(predicted_label == tgt_label)
                 self.num_samples += 1
                 self.mov_avg_acc /= self.num_samples
 
                 if self.plot and batch_id % 100 == 0:
-                    self.plot_activity(ts_ext, None, ts_filt, self.lyr_hidden.res_acts_last_evolution, 
+                    self.plot_activity(ts_ext, ts_filt, self.lyr_hidden.res_acts_last_evolution, 
                                        ts_out, ts_tgt)
 
                 true_tgts = ts_tgt(ts_ext.times)
@@ -327,11 +279,11 @@ class RNN(BaseModel):
                 mse = np.mean((true_tgts - pred_tgts) ** 2)
                 epoch_loss += mse
 
-                print("--------------------------------")
-                print("epoch", epoch, "batch", batch_id, "MSE", mse, "epoch", epoch_loss)
-                print("true label", tgt_label, "pred label", predicted_label, "loss", loss, "mvg acc", self.mov_avg_acc)
-                print("--------------------------------")
-
+                print("--------------------------------",flush=True)
+                print("epoch", epoch, "batch", batch_id,flush=True) 
+                print("MSE", mse, "loss", loss, "epoch loss", epoch_loss,flush=True)
+                print("true label", tgt_label, "pred label", predicted_label, "mvg acc", self.mov_avg_acc,flush=True)
+                print("--------------------------------",flush=True)
 
                 train_logger.add_predictions(pred_labels=[predicted_label], pred_target_signals=[pred_tgt_signals])
                 fn_metrics('train', train_logger)
@@ -348,7 +300,7 @@ class RNN(BaseModel):
 
                 ts_ext, ts_filt, ts_out, ts_tgt = self.predict(batch)
                 
-                if np.any(ts_out.samples > self.threshold):
+                if np.any(ts_out.samples[:, 1] > self.threshold):
                     predicted_label = 1
                 else:
                     predicted_label = 0
@@ -371,14 +323,15 @@ class RNN(BaseModel):
                 mse = np.mean((true_tgts - pred_tgts) ** 2)
                 val_loss += mse
 
-                print("MSE", mse, "epoch", val_loss, "mvg acc", self.mov_avg_acc)
+                print("MSE", mse, "epoch", val_loss, "mvg acc", self.mov_avg_acc,flush=True)
 
                 val_logger.add_predictions(pred_labels=[predicted_label], pred_target_signals=[pred_tgt_signals])
                 fn_metrics('val', val_logger)
 
 
             if val_loss < self.best_loss:
-                self.save("rate_heysnips_tanh_0.model")
+                fn = "rate_heysnips_id_" + str(int(1000*np.random.randn())) + ".model"
+                self.save(fn)
                 self.best_loss = val_loss
 
             yield {"train_loss": epoch_loss, "val_loss": val_loss}
@@ -389,9 +342,6 @@ class RNN(BaseModel):
         self.mov_avg_acc = 0.
         self.num_samples = 0
 
-        test_true_labels = []
-        test_pred_labels = []
-
         for batch_id, [batch, test_logger] in enumerate(data_loader.test_set()):
 
             if batch_id > self.num_val:
@@ -399,7 +349,7 @@ class RNN(BaseModel):
 
             ts_ext, ts_filt, ts_out, ts_tgt = self.predict(batch)
 
-            if np.any(ts_out.samples > self.threshold):
+            if np.any(ts_out.samples[:, 1] > self.threshold):
                 predicted_label = 1
             else:
                 predicted_label = 0
@@ -414,62 +364,40 @@ class RNN(BaseModel):
             self.num_samples += 1
             self.mov_avg_acc /= self.num_samples
 
-            print("test batch_id", batch_id, "mvg acc", self.mov_avg_acc)
+            print("test batch_id", batch_id, "mvg acc", self.mov_avg_acc,flush=True)
 
             test_logger.add_predictions(pred_labels=[predicted_label], pred_target_signals=[pred_tgt_signals])
             fn_metrics('test', test_logger)
-
-        test_acc = metrics.accuracy_score(test_true_labels, test_pred_labels)
-        cm = metrics.confusion_matrix(test_true_labels, test_pred_labels)
-
-        print(cm)
-
-        print(f"test acc {test_acc}")
 
 
 
 if __name__ == "__main__":
 
-    config = {}
-
-    print(config)
-
     batch_size = 1
     percentage_data = 1.0
     balance_ratio = 1.0
+    downsample = 200
+    num_filters = 16
     snr = 10.
 
     experiment = HeySnipsDEMAND(batch_size=batch_size,
                                 percentage=percentage_data,
+                                balance_ratio=balance_ratio,
                                 snr=snr,
                                 one_hot=False,
+                                num_filters=num_filters,
+                                downsample=downsample,
                                 is_tracking=False)
 
-    num_train_batches = int(np.ceil(experiment.num_train_samples / batch_size))
-    num_val_batches = int(np.ceil(experiment.num_val_samples / batch_size))
-    num_test_batches = int(np.ceil(experiment.num_test_samples / batch_size))
 
-    model = RNN(config=config,
-                labels=experiment._data_loader.used_labels, 
-                plot=True,
+    model = RNN(labels=experiment._data_loader.used_labels, 
+                plot=False,
                 train=True,
                 num_val=np.inf)
 
-
     experiment.set_model(model)
-    experiment.set_config({'num_train_batches': num_train_batches,
-                           'num_val_batches': num_val_batches,
-                           'num_test_batches': num_test_batches,
-                           'batch size': batch_size,
-                           'percentage data': percentage_data,
-                           'snr': snr,
-                           'balance_ratio': balance_ratio,
-                           'model_config': config})
-
     experiment.start()
 
-    print("experiment done")
-
-
-
+    print("experiment done",flush=True)
+    print(f"acc {experiment.acc_scores}",flush=True)
 
