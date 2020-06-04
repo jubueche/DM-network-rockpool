@@ -45,11 +45,11 @@ def my_loss(
     reg_max_tau: float = 1.0,
     reg_l2_rec: float = 1.0,
     reg_diag_weights: float = 1.0,
-    reg_bias: float = 1.0
+    reg_bias: float = 1.0,
+    reg_l2_w_out : float = 1.0
 ) -> float:
     """
     Loss function for target versus output
-
     :param Params params:               Set of packed parameters
     :param jnp.ndarray output_batch_t:   Output rasterised time series [TxO]
     :param jnp.ndarray target_batch_t:   Target rasterised time series [TxO]
@@ -60,33 +60,27 @@ def my_loss(
     :param float reg_l2_rec:            Factor when combining loss, on L2-norm term of recurrent weights. Default: 1.
     :param float reg_diag_weights:      Factor when combining loss, on diagonal enties of the recurrent weights. Default: 1.0
     :param float reg_bias:              Factor when combining loss, on biases. Default: 1.0
-
     :return float: Current loss value
     """
     # - Measure output-target loss
     mse = lambda_mse * jnp.mean((output_batch_t - target_batch_t) ** 2)
-
     # - Get loss for tau parameter constraints
     tau_loss = reg_tau * jnp.mean(
         jnp.where(params["tau"] < min_tau, jnp.exp(-(params["tau"] - min_tau)), 0)
     )
-
     # punish high time constants
     max_tau_loss = reg_max_tau * jnp.max(jnp.clip(params["tau"] - min_tau, 0, jnp.inf) ** 2)
-
     # punish high diag weights
     w_diag = params['w_recurrent'] * jnp.eye(len(params['w_recurrent']))
     loss_diag = reg_diag_weights * jnp.mean(jnp.abs(w_diag))
-
     # - Measure recurrent L2 norm
     w_res_norm = reg_l2_rec * jnp.mean(params["w_recurrent"] ** 2)
-
+    # - Enforce uniform read-out weights
+    loss_w_out = reg_l2_w_out * jnp.mean(params["w_out"]**2)
     # punish large biases
     loss_bias = reg_bias * jnp.mean(params['bias'] ** 2)
-
     # - Loss: target/output squared error, time constant constraint, recurrent weights norm, activation penalty
-    fLoss = mse + tau_loss + w_res_norm + max_tau_loss + loss_bias + loss_diag
-
+    fLoss = mse + tau_loss + w_res_norm + max_tau_loss + loss_bias + loss_diag + loss_w_out
     # - Return loss
     return fLoss
 
@@ -115,10 +109,10 @@ class RNN(BaseModel):
         self.downsample = downsample 
 
         self.num_channels = 16 
-        self.num_neurons = 128 
+        self.num_neurons = 256
         self.num_targets = len(labels) 
 
-        self.num_epochs = 1
+        self.num_epochs = 10
 
         self.mov_avg_acc = 0.
         self.num_samples = 0
@@ -228,15 +222,16 @@ class RNN(BaseModel):
                 l_fcn, g_fcn, o_fcn = self.lyr_hidden.train_output_target(ts_filt,
                                                                           ts_tgt,
                                                                           is_first = (batch_id == 0) and (epoch == 0),
-                                                                          opt_params={"step_size": 1e-3},
+                                                                          opt_params={"step_size": 1e-4},
                                                                           loss_fcn=my_loss,
-                                                                          loss_params={"lambda_mse": 1.0,
+                                                                          loss_params={"lambda_mse": 1000000.0,
                                                                                        "reg_tau": 1000000.0,
                                                                                        "reg_l2_rec": 1.0,
                                                                                        "min_tau": 0.015,
                                                                                        "reg_max_tau": 1.0,
                                                                                        "reg_diag_weights": 1.0,
-                                                                                       "reg_bias": 1.0 })
+                                                                                       "reg_bias": 1000.0,
+                                                                                       "reg_l2_w_out": 0.0 })
 
 
                 loss = np.array(l_fcn()).tolist()
@@ -252,9 +247,6 @@ class RNN(BaseModel):
 
                 pred_tgt_signals = ts_out.samples
                 pred_tgt_signals[np.isnan(pred_tgt_signals)] = 0
-
-                sr = np.max(np.abs(np.linalg.eigvals(self.lyr_hidden.w_recurrent)))
-                print(f"spectral radius {sr}",flush=True)
 
                 w_diag = self.lyr_hidden.w_recurrent * np.eye(len(self.lyr_hidden.w_recurrent))
                 print(f"diag weights {np.mean(np.abs(w_diag))}",flush=True)

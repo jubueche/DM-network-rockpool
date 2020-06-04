@@ -18,7 +18,7 @@
 \title{Robust classification using balanced networks}
 
 \author{\name Julian B\"uchel \email jubueche@ethz.ch \\
-       \addr aiCTX AG\\
+       \addr SynSense\\
        Thurgauerstrasse 40 \\
        Z\"urich, ZH, Switzerland}
 
@@ -39,8 +39,8 @@
   representation error of some input signal. This precise network architecture leads to a robust, energy efficient and precise signal
   representation that can be augmented with additional recurrent weights to perform more complex tasks. \newline
   While it has been shown that these networks can be used to implement linear (\cite{boerlin}) or even non-linear dynamical systems (\cite{alemi2017learning}),
-  no paper (to our best knowledge) has shown a way to train a classifier using efficient balanced networks (EBN) as a foundation. \newline
-  In this report, we demonstrate how a tightly balanced network can learn to do arbitrary classification tasks of varying complexity, while still keeping 
+  no paper has shown a way to train a classifier using efficient balanced networks (EBN) as a foundation. \newline
+  In this paper, we demonstrate how a tightly balanced network can learn to do arbitrary classification tasks of varying complexity, while still keeping 
   the benefits of the balanced network presented in \cite{Bourdoukan:2012:LOS:2999325.2999390}.
    
 \end{abstract}
@@ -58,18 +58,18 @@ where $x$ is a vector of state variables $x_j$, $f(.)$ is a non-linear function 
 Furthermore, let us assume a "student" dynamical system of the form
 
 \begin{equation} \label{eq:student_dyn}
-  \dot{\hat{x}} = -\lambda \hat{x} + \mathbf{W}^T \psi(\hat{x}) + c(t) + ke
+  \dot{\hat{x}} = -\lambda \hat{x} + \mathbf{W}^T \Psi(\hat{x}) + c(t) + ke
 \end{equation}
 
 where $\hat{x}$ is a vector of state variables $\hat{x}_j$, $\lambda$ is a leak term, and $c$ is the same time-dependent input as in Equation \ref{eq:teacher_dyn}.
 Over time, the signed error $e = x - \hat{x}$ between the teacher dynamics (Eq. \ref{eq:teacher_dyn}) and the student dynamics (Eq. \ref{eq:student_dyn}) is computed
 and fed into the student dynamics, causing the student state variables $\hat{x}$ to follow the target variables $x$ more closely. This close tracking enables
 us to update the weights $\mathbf{W}$ using Eq. \ref{eq:learning_rule}, so that over the course of learning, the factor $k$ can be reduced to zero and the network follows the teacher dynamics
-autonomously, using only a weighted sum of basis functions, given by $\psi(x)=\phi(\mathbf{M}\hat{x}+\theta)$, for some non-linear function $\phi$, and some random $\mathbf{M}$ and $\theta$.
+autonomously, using only a weighted sum of basis functions, given by $\Psi(\hat{x})=\phi(\mathbf{M}\hat{x}+\theta)$, for some non-linear function $\phi$, and some random $\mathbf{M}$ and $\theta$.
 The learning rule used to adapt the weights $\mathbf{W}$ is given by
 
 \begin{equation} \label{eq:learning_rule}
-  \dot{\mathbf{W}} = \eta \phi(\hat{x})e^T
+  \dot{\mathbf{W}} = \eta \Psi(\hat{x})e^T
 \end{equation}
 
 and can be shown to let the weights $\mathbf{W}$ converge towards the optimal weights, denoted $\mathbf{W}^\textnormal{true}$, assuming that the input $c(t)$ does not lie on a
@@ -126,14 +126,13 @@ accumulating the rates and errors into large arrays of size $N \times T$ and per
   \dot{\mathbf{\Omega}}^\mathbf{s} = \eta \mathbf{R}(\mathbf{D}^T\mathbf{E})^T
 \end{equation*}
 
-\section{Training a classifier based on EBN's}
+\section{Training a classifier based on an EBN}
 The coding properties of efficient balanced networks make them attractive for many applications, especially in the neuromorphic community. However, so far it has only been shown how to
-implement linear and non-linear dynamical systems of a specific form. In this section we provide a method to train an efficient balanced network to perform classification tasks of varying
+implement linear and non-linear dynamical systems of a specific form using EBNs. In this section we provide a method to train an efficient balanced network to perform classification tasks of varying
 complexity. \\
 Let us define our time-varying, real-valued input as $c_t$, where $c \in \mathcal{R}^{N_c \times 1}$ and $t \in \{0..T\}$.
 The goal of training a classifier is to find a mapping $f(\Theta)$ that maps any input $\mathbf{c}$ to the desired target variable $\mathbf{y}$,
-where $\mathbf{y}$ is an indicator variable over time. Concretely, $\mathbf{y}$ is a Gaussian kernel with mean $t_\textnormal{target}$, where $t_\textnormal{target}$
-is the time when a classification response of the network is expected.
+where $\mathbf{y}$ is an indicator variable over time.
 For simplicity, we will consider the case of binary classification. We however note that our method can be easily extended to a multi-class classification task. \\
 Considering the ability of the learning rule presented in section \ref{sec:learning_rule}, one might be be inclined to assume a "black box" dynamical system $\mathcal{B}$
 of the form $\dot{y} = f(y) + c(t)$ that, given input $\mathbf{c}$, autonomously produces the desired target $\mathbf{y}$. Two problems come with this approach:
@@ -148,7 +147,7 @@ To answer this question, we consider a simple rate network consisting of $\hat{N
   \tau_j \dot{x}_j = -x_j + \hat{\mathbf{F}}c(t)_j + \hat{\mathbf{\Omega}}f(x(t))_j + b_j + \epsilon_j
 \end{equation}
 where $\tau_j$ is the time constant of the \textit{j-th} unit, $\hat{\mathbf{F}}$ are feed-forward weights of shape $\hat{N} \times N_c$, $c(t)$ is the $N_c$ dimensional input at time $t$,
-$f(.)$ is a non-linear function like $\textnormal{tanh}(.)$, $\hat{\mathbf{\Omega}}$ are recurrent weights of shape $\hat{N} \times \hat{N}$ and $b_j$ and $\epsilon_j$ are bias and noise terms, respectively.
+$f(.)$ is a non-linear function (e.g.$\textnormal{tanh}(.)$), $\hat{\mathbf{\Omega}}$ are recurrent weights of shape $\hat{N} \times \hat{N}$ and $b_j$ and $\epsilon_j$ are bias and noise terms, respectively.
 We observe that a rate network can be written in the general form $\dot{x} = \tilde{f}(x) + \tilde{c}(t)$, with $\tilde{f}(x) = 1/\tau(-x + \hat{\mathbf{\Omega}}fx(t))+ \epsilon)$
 and $\tilde{c}(t)=1/\tau(\hat{\mathbf{F}}c(t) + b)$, meaning that an efficient balanced network can be trained to implement the dynamics of \textit{any} given rate network obeying the
 dynamics of Eq. \ref{eq:rate_dyn}. \\
@@ -189,13 +188,12 @@ and $r(t)$ are the filtered spike trains at time $t$ of the spiking network. \\
 In this experiment, a rate network of 64 neurons was trained to perform
 temporal XOR on a one-dimensional input. The network was presented with two bumps
 of magnitude $\pm 1$, indicating True or False. The bumps had a variable length
-between 100 and 230ms and were separated by a ~70ms pause, requiring the network
-to memorize the first bump for some time. 
+between 100 and 230ms. The target response was chosen to be a smoothed step function. 
 
 \begin{figure}[!htb]
   \includegraphics[width = \columnwidth, height=10cm]{figures/figure2.png}
   \caption{\textbf{A:} The spiking network consisting
-  of 380 neurons successfully reconstructs the dynamics of the rate network.
+  of 380 neurons (~6 times $\hat{N}$) successfully reconstructs the dynamics of the rate network.
   \textbf{B:} The membrane potentials and spike trains show
   irregular and distributed spiking activity, although no fast recurrent connections were used.
   \textbf{C:} The final output of the network is computed using the read-out matrix from the
@@ -210,7 +208,13 @@ since the dynamics of the rate network are more abrupt. Usually, having longer t
 yields smoother rate network dynamics, which makes it easier for the spiking network to learn.
 Our network learns this temporal XOR task to 99.99\% accuracy using only 6 times as many neurons
 as the rate network. We however note that the input space is very small and that both networks
-might simply overfit to the generated data.
+might simply overfit to the generated data. One aspect that we would like to highlight at this point
+is the fact that we are not using any dendritic non-linearity, meaning that we simply replaced
+the term $\Psi(r)$ with $r$. Because of the non-linearity of the neuron dynamics, using the
+spiking rates as a basis function suffices to learn the dynamics of a rate network using $tanh(.)$ as a
+non-linear activation function. We also note that the EBN connections, $\mathbf{\Omega^f}$,
+do not improve reconstruction accuracy, but do improve robustness against sudden neuron death (see \cite{alemi2017learning})
+as we show in a later section.
 
 \subsection{Wake-phrase detection}
 To show that our approach also works on a more complex and realistic task, we used a network consisting of $N=768$ spiking
@@ -247,7 +251,7 @@ keeping $k$ constant for some time before decreasing it again.
   \textbf{B:} To make classification easier, 16 butterworth filters with different cutoff frequencies
   were applied to create a 16-dimensional input signal. \textbf{C:} For a sample containing the key phrase,
   our network output closely follows the output of the rate network and thus makes the correct decision. In this experiment,
-  a threshold at 0.6 determined whether the prediction was positive or negative. \textbf{D:} Negative samples on the other hand
+  a threshold at 0.7 determined whether the prediction was positive or negative. \textbf{D:} Negative samples on the other hand
   did not cause a rise in the output variable and were therefore correctly classified as negative samples. For this particular experiment,
   the rate network achieved 90.31\% on a held out test set containing 1000 samples. The spiking network achieved 86.80\% test accuracy,
   while imitating the dynamics of the rate network (\textbf{E}). \textbf{F:} As expected, the spiking activity of the
@@ -326,7 +330,7 @@ of neurons used.
 \subsection{Role of $\mathbf{\Omega^f}$}
 As previously stated in section \ref{sec:learning_rule}, we found that our network is able to reconstruct the non-linear dynamics
 of a rate network \textit{without} the dendritic non-linearities $\phi(\mathbf{M}r+\theta)$ and \textit{without} the fast connections $\mathbf{\Omega^f}$.  
-If anything, we found that using the fast recurrent connections leads to a degradation in accuracy as Figure \ref{fig:figure9} illustrates.
+If anything, we found that using the EBN connections leads to a degradation in accuracy as Figure \ref{fig:figure9} illustrates.
 From \cite{Bourdoukan:2012:LOS:2999325.2999390}, we know that EBNs lead to sparser and more distributed spike trains and result in a
 lower reconstruction error in an autoencoder-like setting. We therefore, prior to training, compared the spike-trains, membrane potentials and
 reconstruction error of a network with and without $\mathbf{\Omega^f}$ to make sure that our EBN actually met these expectations. Although the

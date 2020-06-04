@@ -122,7 +122,7 @@ for epoch in range(num_epochs):
     for batch_id in range(num_batches):
 
         # - Generate new training data
-        data, target = generate_xor_sample(total_duration=duration, dt=dt, amplitude=amplitude)
+        data, target, _ = generate_xor_sample(total_duration=duration, dt=dt, amplitude=amplitude)
         ts_data = TSContinuous(time_base, data)
         ts_target = TSContinuous(time_base, target)
         

@@ -95,7 +95,7 @@ class TemporalXORNetwork:
                                              name="hidden")
         
         # - Create NetworkADS
-        model_path_ads_net = os.path.join(self.base_path,"Resources/temporal-xor/node_04967141530_test_acc0.99threshold0.7eta0.001val_acc1.0tau_slow0.1tau_out0.1num_neurons380num_dist_weights-1.json")
+        model_path_ads_net = os.path.join(self.base_path,"Resources/temporal-xor/x")
 
         if(os.path.exists(model_path_ads_net)):
             self.net = NetworkADS.load(model_path_ads_net)
@@ -155,8 +155,8 @@ class TemporalXORNetwork:
             weights_in_realistic = D_realistic
             weights_out_realistic = D_realistic.T
             weights_fast_realistic = a*np.divide(weights_fast.T, v_thresh.ravel()).T # - Divide each row
-        
-            weights_fast_realistic = np.zeros((self.num_neurons,self.num_neurons))
+
+            # weights_fast_realistic = np.zeros((self.num_neurons,self.num_neurons))
 
             # - Reset is given by v_reset_target = b - a
             v_reset_target = b - a
@@ -167,7 +167,7 @@ class TemporalXORNetwork:
                                             Nb=self.num_neurons,
                                             weights_in=weights_in_realistic * self.tau_mem,
                                             weights_out= weights_out_realistic,
-                                            weights_fast= - weights_fast_realistic / tau_syn_fast,
+                                            weights_fast= - weights_fast_realistic / tau_syn_fast * 2,
                                             weights_slow = weights_slow,
                                             eta=eta,
                                             k=k,
@@ -205,6 +205,64 @@ class TemporalXORNetwork:
         self.track_dict["validation_acc"] = []
         self.track_dict["validation_recon_acc"] = []
         self.track_dict["testing_acc"] = 0.0
+
+    def check_balance(self, ts_spiking_in):
+        # - Evolve
+        fast_weights = self.net.lyrRes.weights_fast
+        self.net.lyrRes.ts_target = ts_spiking_in
+        val_sim = self.net.evolve(ts_input=ts_spiking_in, verbose=True); self.net.reset_all()
+        ts_out_val = val_sim["output_layer"]
+
+        v = self.net.lyrRes._last_evolve["v"]
+        vt = self.net.lyrRes._last_evolve["vt"]
+        stagger_v = np.ones(v.shape)
+        for idx in range(self.num_neurons):
+            stagger_v[idx,:] += idx
+        v_staggered = stagger_v + v
+
+        self.net.lyrRes.weights_fast *= 0
+        val_sim_no_fast = self.net.evolve(ts_input=ts_spiking_in, verbose=True); self.net.reset_all()
+        self.net.lyrRes.weights_fast = fast_weights
+        ts_out_val_no_fast = val_sim_no_fast["output_layer"]
+
+        v_no_fast = self.net.lyrRes._last_evolve["v"]
+        vt_no_fast = self.net.lyrRes._last_evolve["vt"]
+        stagger_v_no_fast = np.ones(v_no_fast.shape)
+        for idx in range(self.num_neurons):
+            stagger_v_no_fast[idx,:] += idx
+        v_staggered_no_fast = stagger_v_no_fast + v_no_fast
+
+        error_no_fast = np.linalg.norm(ts_spiking_in.samples/1000-ts_out_val_no_fast.samples)
+        error_fast = np.linalg.norm(ts_spiking_in.samples/1000-ts_out_val.samples)
+        print("Error with fast conn. is",error_fast,"Error without fast connections is",error_no_fast)
+
+        # - Plot
+        fig = plt.figure(figsize=(20,10),constrained_layout=True)
+        gs = fig.add_gridspec(4, 2)
+        
+        plot_num = 10
+        ax0 = fig.add_subplot(gs[0,:])
+        ts_spiking_in.plot()
+        ax1 = fig.add_subplot(gs[1,0])
+        ax1.set_title(r"With fast recurrent weights")
+        val_sim["lyrRes"].plot()
+        ax1.set_ylim([-0.5,self.num_neurons-0.5])
+        ax2 = fig.add_subplot(gs[2,0])
+        ts_out_val.plot()
+        ax3 = fig.add_subplot(gs[3,0])
+        ax3.plot(vt, v_staggered[:plot_num,:].T)
+
+        ax5 = fig.add_subplot(gs[1,1])
+        ax5.set_title(r"Without fast recurrent weights")
+        val_sim_no_fast["lyrRes"].plot()
+        ax5.set_ylim([-0.5,self.num_neurons-0.5])
+        ax6 = fig.add_subplot(gs[2,1])
+        ts_out_val_no_fast.plot()
+        ax7 = fig.add_subplot(gs[3,1])
+        ax7.plot(vt_no_fast, v_staggered_no_fast[:plot_num,:].T)
+
+        plt.tight_layout()
+        plt.show()
 
     def save(self, fn):
         return
@@ -289,6 +347,9 @@ class TemporalXORNetwork:
                     tgt_label = 0
 
                 (ts_spiking_in, ts_rate_net_target_dynamics, ts_rate_out) = self.get_data(data=data)
+
+                if(epoch == 0 and batch_id == 0 and self.verbose > 0):
+                    self.check_balance(ts_spiking_in=ts_spiking_in)
 
                 if((ts_rate_out.samples > 0.7).any()):
                     predicted_label_rate = 1

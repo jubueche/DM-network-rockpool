@@ -1,14 +1,14 @@
 # Fdb version 3
-["bibtex main"] 1590833520 "main.aux" "main.bbl" "main" 1590834587
+["bibtex main"] 1591084935 "main.aux" "main.bbl" "main" 1591168839
   "/usr/local/texlive/2019/texmf-dist/bibtex/bst/natbib/plainnat.bst" 1233624470 26816 ffe5423d2019860bad9f54bc402fac15 ""
   "bibliography.bib" 1589459066 22227 43ddba85998102b9333d8dbb8e977b9b ""
-  "main.aux" 1590833616 15714 f88fc01e304d6df86559eb0fc3116ffc "pdflatex"
+  "main.aux" 1591168839 15805 1e2ccdc60fa1864ac810a64fe177752c "pdflatex"
   (generated)
   "main.blg"
   "main.bbl"
-["pdflatex"] 1590833601 "/home/julian/Documents/dm-network-rockpool/Latex/main.tex" "/home/julian/Documents/dm-network-rockpool/Latex/main.pdf" "main" 1590834587
-  "/home/julian/Documents/dm-network-rockpool/Latex/main.aux" 1590833616 15714 f88fc01e304d6df86559eb0fc3116ffc ""
-  "/home/julian/Documents/dm-network-rockpool/Latex/main.tex" 1590834587 25845 dd0450c0ed5a9c1952af2b61c614e042 ""
+["pdflatex"] 1591168824 "/home/julian/Documents/dm-network-rockpool/Latex/main.tex" "/home/julian/Documents/dm-network-rockpool/Latex/main.pdf" "main" 1591168839
+  "/home/julian/Documents/dm-network-rockpool/Latex/main.aux" 1591168839 15805 1e2ccdc60fa1864ac810a64fe177752c ""
+  "/home/julian/Documents/dm-network-rockpool/Latex/main.tex" 1591168823 26226 45779d964472ba7bac1d243981b0e338 ""
   "/usr/local/texlive/2019/texmf-dist/fonts/map/fontname/texfonts.map" 1577235249 3524 cb3e574dea2d1052e39280babc910dc8 ""
   "/usr/local/texlive/2019/texmf-dist/fonts/tfm/public/amsfonts/cmextra/cmex7.tfm" 1246382020 1004 54797486969f23fa377b128694d548df ""
   "/usr/local/texlive/2019/texmf-dist/fonts/tfm/public/amsfonts/cmextra/cmex8.tfm" 1246382020 988 bdf658c3bfc2d96d3c8b02cfc1c94c20 ""
@@ -129,16 +129,16 @@
   "figures/figure8.png" 1590583211 187521 73ba9e44a744ae9c94e3699f0c6cb3ae ""
   "figures/figure9.png" 1590585762 538586 0113cd13f23bcb9f00852e818a6a12ec ""
   "figures/setup_complete.png" 1589459066 126700 bf09c6c78e144e9a4492922fbd75a057 ""
-  "main.aux" 1590833616 15714 f88fc01e304d6df86559eb0fc3116ffc "pdflatex"
-  "main.bbl" 1590833520 1351 e2c7ec2ed2f3aa394728097b29d61bd1 "bibtex main"
-  "main.out" 1590833616 567 517a420c961c3bb1bc26d1bd203df555 "pdflatex"
-  "main.tex" 1590834587 25845 dd0450c0ed5a9c1952af2b61c614e042 ""
-  "main.toc" 1590833616 764 0b990e2c3fae677c13fe41020f6a1e8b "pdflatex"
+  "main.aux" 1591168839 15805 1e2ccdc60fa1864ac810a64fe177752c "pdflatex"
+  "main.bbl" 1591084935 1351 e2c7ec2ed2f3aa394728097b29d61bd1 "bibtex main"
+  "main.out" 1591168839 568 93d0094185a701d8f923701a588b330e "pdflatex"
+  "main.tex" 1591168823 26226 45779d964472ba7bac1d243981b0e338 ""
+  "main.toc" 1591168839 765 125edb53c9fb766d21ebb2b1fff5166d "pdflatex"
   (generated)
-  "main.aux"
-  "/home/julian/Documents/dm-network-rockpool/Latex/main.log"
-  "main.out"
   "main.pdf"
+  "main.out"
+  "main.aux"
   "main.log"
   "/home/julian/Documents/dm-network-rockpool/Latex/main.pdf"
   "main.toc"
+  "/home/julian/Documents/dm-network-rockpool/Latex/main.log"

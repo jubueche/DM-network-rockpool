@@ -1,6 +1,6 @@
 \BOOKMARK [1][-]{section.1}{Learning in adaptive non-linear control theory}{}% 1
 \BOOKMARK [1][-]{section.2}{Learning arbitrary dynamical systems in EBN's}{}% 2
-\BOOKMARK [1][-]{section.3}{Training a classifier based on EBN's}{}% 3
+\BOOKMARK [1][-]{section.3}{Training a classifier based on an EBN}{}% 3
 \BOOKMARK [1][-]{section.4}{Results}{}% 4
 \BOOKMARK [2][-]{subsection.4.1}{Temporal XOR}{section.4}% 5
 \BOOKMARK [2][-]{subsection.4.2}{Wake-phrase detection}{section.4}% 6
