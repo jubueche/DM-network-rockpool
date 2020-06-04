@@ -39,7 +39,7 @@ class MyDemo(AiCtxMainWindow):
         self.fs_plot = 1600
         self.threshold = [1.0, 0.5]
 
-        self.threshold_sum = 300
+        self.threshold_sum = 200
 
         # Filter parameters
         self.num_plot_filters = 16  # Num of frequency channels
@@ -116,8 +116,8 @@ class MyDemo(AiCtxMainWindow):
         io_devices = sd.query_devices()
         for (i, device) in enumerate(io_devices):
             print(device["name"])
-            if "ALC1220 Analog" in device["name"]:
-            # if "default" in device["name"]:
+            # if "ALC1220 Analog" in device["name"]:
+            if "default" in device["name"]:
                 samplerate = device['default_samplerate']
                 print(samplerate)
                 uid = i
@@ -267,6 +267,8 @@ class MyDemo(AiCtxMainWindow):
         spike_raster = tsERec.raster(dt=0.001, add_events=True)
         spike_counts = np.sum(spike_raster, axis=0)
 
+        print(f"fanout: {fanout.shape} spike_counts: {spike_counts.shape}")
+
         # - Cost for routing events depends on neuron population
         en_core_rec = 1 * en_core_broadcast + 0 * en_core_route
         en_cores = np.repeat(
@@ -306,69 +308,69 @@ class MyDemo(AiCtxMainWindow):
         return y_smooth
 
     def run_model(self, inp):
-        # try:
-        times = (np.arange(len(inp)) / self.fs + self.lyr_filt.t)
-        tsInput = TSContinuous(times, inp)
-        times_net = np.arange(tsInput.t_start, tsInput.t_stop, self.net_dt)
+        try:
+            times = (np.arange(len(inp)) / self.fs + self.lyr_filt.t)
+            tsInput = TSContinuous(times, inp)
+            times_net = np.arange(tsInput.t_start, tsInput.t_stop, self.net_dt)
 
-        t0 = time.time()
-        ts_filter = self.lyr_filt.evolve(tsInput)
-        ts_inp = self.net.input_layer.evolve(TSContinuous(times_net, self.amplitude * ts_filter(times_net) @ self.w_in))
-        
-        self.lyr_res.ts_target = ts_inp
-        ts_res = self.lyr_res.evolve(ts_inp)
-        # ts_state = ts_res.append_c(ts_inp)
-        ts_out = self.out_layer.evolve(ts_res)
-        t1 = time.time()
-        print(f"model eval {t1-t0}")
+            t0 = time.time()
+            ts_filter = self.lyr_filt.evolve(tsInput)
+            ts_inp = self.net.input_layer.evolve(TSContinuous(times_net, self.amplitude * ts_filter(times_net) @ self.w_in))
+            
+            self.lyr_res.ts_target = ts_inp
+            ts_res = self.lyr_res.evolve(ts_inp)
+            # ts_state = ts_res.append_c(ts_inp)
+            ts_out = self.out_layer.evolve(ts_res)
+            t1 = time.time()
+            print(f"model eval {t1-t0}")
 
-        net_dt = self.net.dt
-        filt_dt = self.lyr_filt.dt
+            net_dt = self.net.dt
+            filt_dt = self.lyr_filt.dt
 
-        #y_pred = dtSig['output'].samples
-        #filt_out = dtSig['filter'].samples
-        final_out = ts_out.samples @ self.w_out
-        y_pred = filter_1d(final_out, alpha=0.95)
+            #y_pred = dtSig['output'].samples
+            #filt_out = dtSig['filter'].samples
+            final_out = ts_out.samples @ self.w_out
+            y_pred = filter_1d(final_out, alpha=0.95)
 
-        filt_out = ts_filter.samples
+            filt_out = ts_filter.samples
 
 
-        if((ts_res.channels > -1).any()):
-            vfPower = copy.deepcopy(self.calculate_power_consumption(self.lyr_res.weights_in,
-                                                                    self.lyr_res.weights_slow,
-                                                                    ts_inp,
-                                                                    ts_res,
-                                                                    tsInput.duration))
+            if((ts_res.channels > -1).any()):
+                vfPower = copy.deepcopy(self.calculate_power_consumption(self.lyr_res.weights_in,
+                                                                        self.lyr_res.weights_slow,
+                                                                        ts_inp,
+                                                                        ts_res,
+                                                                        tsInput.duration))
+            else:
+                vfPower = [0.0]
+
+            self.filt_csum *= 0.9
+            self.filt_csum += np.cumsum(np.sum(filt_out, axis=0)) * 0.1
+
+            for i in range(self.num_classes):
+                tmp = y_pred
+                tmp[np.where(tmp < self.threshold[1])[0]] = 0.
+                if np.sum(tmp) > 0:
+                    tmp[0] = self.model_out[i][-1]
+
+                tmp = np.cumsum(tmp).tolist()
+                self.model_out[i] += tmp
+
+            self.power_data += vfPower * len(tmp)
+
+            self.power_hist.append(vfPower[0] * tsInput.duration)
+            self.peak_power = np.max([self.peak_power, vfPower[0]])
+
+            for i in range(self.num_plot_filters):
+                tmp = filt_out[::int(self.fs * self.t_plot_filt), int(i * self.num_filters / self.num_plot_filters)].tolist()
+                tmp[0] = self.filter_out[i][-1]
+                self.filter_out[i] += tmp
+
+
+        except Exception as e:
+            print(f"[inference] {e}")
         else:
-            vfPower = [0.0]
-
-        self.filt_csum *= 0.9
-        self.filt_csum += np.cumsum(np.sum(filt_out, axis=0)) * 0.1
-
-        for i in range(self.num_classes):
-            tmp = y_pred
-            tmp[np.where(tmp < self.threshold[1])[0]] = 0.
-            if np.sum(tmp) > 0:
-                tmp[0] = self.model_out[i][-1]
-
-            tmp = np.cumsum(tmp).tolist()
-            self.model_out[i] += tmp
-
-        self.power_data += vfPower * len(tmp)
-
-        self.power_hist.append(vfPower[0] * tsInput.duration)
-        self.peak_power = np.max([self.peak_power, vfPower[0]])
-
-        for i in range(self.num_plot_filters):
-            tmp = filt_out[::int(self.fs * self.t_plot_filt), int(i * self.num_filters / self.num_plot_filters)].tolist()
-            tmp[0] = self.filter_out[i][-1]
-            self.filter_out[i] += tmp
-
-
-        # except Exception as e:
-        #     print(f"[inference] {e}")
-        # else:
-        return y_pred, filt_out, vfPower
+            return y_pred, filt_out, vfPower
 
     def updateDisplay(self):
         """
