@@ -142,6 +142,7 @@ class HeySnipsNetworkADS(BaseModel):
             mu = 0.0005
             nu = 0.0001
             D = np.random.randn(Nc,self.num_neurons) / Nc
+            # D = np.random.uniform(low=-1.0,high=1.0, size=D.shape) * np.max(np.abs(D))
             # weights_in = D
             # weights_out = D.T
             weights_fast = (D.T@D + mu*lambda_d**2*np.eye(self.num_neurons))
@@ -171,7 +172,7 @@ class HeySnipsNetworkADS(BaseModel):
             weights_out_realistic = D_realistic.T
             weights_fast_realistic = a*np.divide(weights_fast.T, v_thresh.ravel()).T # - Divide each row
         
-            # weights_fast_realistic = np.zeros((self.num_neurons,self.num_neurons))
+            weights_fast_realistic = np.zeros((self.num_neurons,self.num_neurons))
 
             # - Reset is given by v_reset_target = b - a
             v_reset_target = b - a
@@ -687,14 +688,14 @@ if __name__ == "__main__":
     parser.add_argument('--verbose', default=0, type=int, help="Level of verbosity. Default=0. Range: 0 to 2")
     parser.add_argument('--tau-slow', default=0.07, type=float, help="Time constant of slow recurrent synapses")
     parser.add_argument('--tau-out', default=0.07, type=float, help="Synaptic time constant of output synapses")
-    parser.add_argument('--epochs', default=10, type=int, help="Number of training epochs")
+    parser.add_argument('--epochs', default=5, type=int, help="Number of training epochs")
     parser.add_argument('--threshold', default=0.7, type=float, help="Threshold for prediction")
     parser.add_argument('--eta', default=0.0001, type=float, help="Learning rate")
-    parser.add_argument('--num-val', default=600, type=int, help="Number of validation samples")
+    parser.add_argument('--num-val', default=500, type=int, help="Number of validation samples")
     parser.add_argument('--num-test', default=1000, type=int, help="Number of test samples")
     parser.add_argument('--dry-run', default=False, action='store_true', help="Performs dry run of the simulation without doing any computation")
     parser.add_argument('--node-id', default=1, type=int, help="Node-ID")
-    parser.add_argument('--percentage-data', default=0.05, type=float, help="Percentage of total training data used. Example: 0.02 is 2%.")
+    parser.add_argument('--percentage-data', default=0.1, type=float, help="Percentage of total training data used. Example: 0.02 is 2%.")
     parser.add_argument('--discretize', default=-1, type=int, help="Number of total different synaptic weights. -1 means no discretization. 8 means 3-bit precision.")
     parser.add_argument('--discretize-dynapse', default=False, action='store_true', help="Respect constraint of DYNAP-SE of having only 64 synapses per neuron. --discretize must not be -1.")
 

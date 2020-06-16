@@ -121,14 +121,14 @@ class HeySnipsNetworkADS(BaseModel):
             # Apply first mismatch
             self.net_mismatch_1024.lyrRes.tau_syn_r_slow = np.abs(np.random.randn(N1)*self.mismatch_std*mean_tau_slow + mean_tau_slow)
             self.net_mismatch_1024.lyrRes.tau_syn_r_fast = np.abs(np.random.randn(N1)*self.mismatch_std*mean_tau_fast + mean_tau_fast)
-            self.net_mismatch_1024.lyrRes.tau_syn_r_out = np.abs(np.random.randn(Nc)*self.mismatch_std*mean_tau_out + mean_tau_out)
+            # self.net_mismatch_1024.lyrRes.tau_syn_r_out = np.abs(np.random.randn(Nc)*self.mismatch_std*mean_tau_out + mean_tau_out)
             self.net_mismatch_1024.lyrRes.tau_mem = np.abs(np.random.randn(N1)*self.mismatch_std*mean_tau_mem + mean_tau_mem)
             self.net_mismatch_1024.lyrRes.v_thresh = np.abs(np.random.randn(N1)*self.mismatch_std*np.mean(self.net_mismatch_1024.lyrRes.v_thresh) + np.mean(self.net_mismatch_1024.lyrRes.v_thresh))
-            
+
             # Apply second mismatch
             self.net_mismatch_768.lyrRes.tau_syn_r_slow = np.abs(np.random.randn(N2)*self.mismatch_std*mean_tau_slow + mean_tau_slow)
             self.net_mismatch_768.lyrRes.tau_syn_r_fast = np.abs(np.random.randn(N2)*self.mismatch_std*mean_tau_fast + mean_tau_fast)
-            self.net_mismatch_768.lyrRes.tau_syn_r_out = np.abs(np.random.randn(Nc)*self.mismatch_std*mean_tau_out + mean_tau_out)
+            # self.net_mismatch_768.lyrRes.tau_syn_r_out = np.abs(np.random.randn(Nc)*self.mismatch_std*mean_tau_out + mean_tau_out)
             self.net_mismatch_768.lyrRes.tau_mem = np.abs(np.random.randn(N2)*self.mismatch_std*mean_tau_mem + mean_tau_mem)
             self.net_mismatch_768.lyrRes.v_thresh = np.abs(np.random.randn(N2)*self.mismatch_std*np.mean(self.net_mismatch_768.lyrRes.v_thresh) + np.mean(self.net_mismatch_768.lyrRes.v_thresh))
 

@@ -267,8 +267,6 @@ class MyDemo(AiCtxMainWindow):
         spike_raster = tsERec.raster(dt=0.001, add_events=True)
         spike_counts = np.sum(spike_raster, axis=0)
 
-        print(f"fanout: {fanout.shape} spike_counts: {spike_counts.shape}")
-
         # - Cost for routing events depends on neuron population
         en_core_rec = 1 * en_core_broadcast + 0 * en_core_route
         en_cores = np.repeat(
@@ -292,12 +290,13 @@ class MyDemo(AiCtxMainWindow):
                 fanout_ext * en_cam_match + 4 * en_core_route +  0 * en_core_broadcast
         )
 
-        spike_raster_ext = tsEIn.raster(dt=0.001, add_events=True)
-        spike_counts_ext = np.sum(spike_raster_ext, axis=0)
-        en_per_ext = spike_counts_ext * en_per_ext_spike
-        en_ext_total = np.sum(en_per_ext)
-        power_ext = en_ext_total / duration
-        power_all = power_total + power_ext
+        # spike_raster_ext = tsEIn.raster(dt=0.001, add_events=True)
+        # spike_counts_ext = np.sum(spike_raster_ext, axis=0)
+        # en_per_ext = spike_counts_ext * en_per_ext_spike
+        # en_ext_total = np.sum(en_per_ext)
+        # power_ext = en_ext_total / duration
+        # power_all = power_total + power_ext
+        power_all = power_total
 
         return [power_all * 1e6]
 

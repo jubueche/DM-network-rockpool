@@ -24,7 +24,7 @@ if not sys.warnoptions:
     import warnings
     warnings.simplefilter("ignore")
 import argparse
-from Utils import plot_matrices, filter_1d, generate_xor_sample
+from Utils import plot_matrices, filter_1d, generate_xor_sample, approximate_lipschitzness_temporal_xor
 
 import tracemalloc
 
@@ -66,7 +66,7 @@ class TemporalXORNetwork:
         self.samples_per_epoch = samples_per_epoch
         self.threshold = threshold
 
-        self.num_rate_neurons = 64 
+        self.num_rate_neurons = 128
         
         # - Everything is stored in base_path/Resources/hey-snips/
         self.base_path = "/home/julian/Documents/dm-network-rockpool/"
@@ -74,7 +74,11 @@ class TemporalXORNetwork:
         # - Every file saved by a node gets the prefix containing the node id
         self.node_prefix = "node_"+str(self.node_id)+str(int(np.abs(np.random.randn()*1e10)))
 
-        rate_net_path = os.path.join(self.base_path, "Resources/temporal-xor/temporal_xor_rate_model_longer_target.json")
+        # - For 768 and 128 use "args": ["--node-id", "1", "--num", "768", "--tau-slow", "0.07", "--tau-out", "0.07", "--epochs", "5", "--samples-per-epoch", "1000", "--eta", "0.0001"
+        # and weights_out * 2 and k=100
+        # - For 1k > and 128 weights_out * 2 and k=200, Basically try to balance helper current with I_out
+
+        rate_net_path = os.path.join(self.base_path, "Resources/temporal-xor/temporal_xor_rate_model_128.json")
         with open(rate_net_path, "r") as f:
             config = json.load(f)
 
@@ -110,6 +114,7 @@ class TemporalXORNetwork:
                 self.best_val_acc = loaddict["best_val_acc"]
 
             print("Loaded pretrained network from %s" % model_path_ads_net)
+            print(f"With {self.num_neurons} neurons")
         else:
             Nc = self.num_rate_neurons
             self.num_neurons = num_neurons
@@ -134,7 +139,7 @@ class TemporalXORNetwork:
             weights_slow = np.zeros((self.num_neurons,self.num_neurons))
   
             eta = eta
-            k = 10 / self.tau_mem
+            k = 75
             # noise_std = 0.0
             # - Pull out thresholds
             v_thresh = (nu * lambda_d + mu * lambda_d**2 + np.sum(abs(D.T), -1, keepdims = True)**2) / 2
@@ -153,10 +158,10 @@ class TemporalXORNetwork:
             # - Feedforward weights: Divide each column i by the i-th threshold value and multiply by i-th value of a
             D_realistic = a*np.divide(D, v_thresh.ravel())
             weights_in_realistic = D_realistic
-            weights_out_realistic = D_realistic.T
+            weights_out_realistic = np.copy(D_realistic).T
             weights_fast_realistic = a*np.divide(weights_fast.T, v_thresh.ravel()).T # - Divide each row
 
-            # weights_fast_realistic = np.zeros((self.num_neurons,self.num_neurons))
+            weights_fast_realistic = np.zeros((self.num_neurons,self.num_neurons))
 
             # - Reset is given by v_reset_target = b - a
             v_reset_target = b - a
@@ -165,8 +170,8 @@ class TemporalXORNetwork:
             self.net = NetworkADS.SpecifyNetwork(N=self.num_neurons,
                                             Nc=Nc,
                                             Nb=self.num_neurons,
-                                            weights_in=weights_in_realistic * self.tau_mem,
-                                            weights_out= weights_out_realistic,
+                                            weights_in= weights_in_realistic * self.tau_mem,
+                                            weights_out= 2*weights_out_realistic,
                                             weights_fast= - weights_fast_realistic / tau_syn_fast * 2,
                                             weights_slow = weights_slow,
                                             eta=eta,
@@ -320,7 +325,7 @@ class TemporalXORNetwork:
             plt.title("Decay schedule for eta"); plt.legend(); plt.show()
 
         time_horizon = 50
-        recon_erros = np.ones((time_horizon,))
+        recon_erros = np.zeros((time_horizon,))
         avg_training_acc = np.zeros((time_horizon,)); avg_training_acc[:int(time_horizon/2)] = 1.0
         time_track = []
 
@@ -348,8 +353,8 @@ class TemporalXORNetwork:
 
                 (ts_spiking_in, ts_rate_net_target_dynamics, ts_rate_out) = self.get_data(data=data)
 
-                if(epoch == 0 and batch_id == 0 and self.verbose > 0):
-                    self.check_balance(ts_spiking_in=ts_spiking_in)
+                # if(epoch == 0 and batch_id == 0 and self.verbose > 0):
+                #     self.check_balance(ts_spiking_in=ts_spiking_in)
 
                 if((ts_rate_out.samples > 0.7).any()):
                     predicted_label_rate = 1
@@ -384,7 +389,7 @@ class TemporalXORNetwork:
                 epoch_loss += error
 
                 final_out = out_val.T @ self.w_out
-                final_out = filter_1d(final_out, alpha=0.95)
+                final_out = filter_1d(final_out, alpha=0.99)
 
                 if(self.verbose > 0):
                     plt.clf()
@@ -499,7 +504,7 @@ class TemporalXORNetwork:
 
             # - Compute the final classification output
             final_out = out_val.T @ self.w_out
-            final_out = filter_1d(final_out, alpha=0.95)
+            final_out = filter_1d(final_out, alpha=0.99)
 
             if(self.verbose > 0):
                 plt.clf()
@@ -552,6 +557,16 @@ class TemporalXORNetwork:
 
     def test(self):
 
+        lipschitz_N = 10
+        lipschitz_X = []
+        for _ in range(lipschitz_N):
+            data, _, _ = generate_xor_sample(total_duration=self.duration, dt=self.dt, amplitude=1.0)
+            (ts_spiking_in, _, _) = self.get_data(data=data)
+            lipschitz_X.append(ts_spiking_in)
+        
+        lipschitzness = approximate_lipschitzness_temporal_xor(lipschitz_X, self.best_model, self.w_out, perturb_steps=10, mismatch_std=0.2)
+        print(f"Lipschitz constant is {lipschitzness}")
+
         correct = 0
         correct_rate = 0
         counter = 0
@@ -577,7 +592,7 @@ class TemporalXORNetwork:
             self.best_model.reset_all()
             
             final_out = out_val.T @ self.w_out
-            final_out = filter_1d(final_out, alpha=0.95)
+            final_out = filter_1d(final_out, alpha=0.99)
 
             # check for threshold crossing
             if(final_out[np.argmax(np.abs(final_out))] > 0):
@@ -679,10 +694,11 @@ class TemporalXORNetwork:
         with open(fn, "w") as f:
             json.dump(savedict, f)
 
+        print(f"Lipschitz constant is {lipschitzness}")
+
 
 if __name__ == "__main__":
 
-    np.random.seed(42)
 
     # - Memory profiling
     tracemalloc.start()

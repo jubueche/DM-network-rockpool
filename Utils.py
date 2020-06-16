@@ -3,6 +3,81 @@ import sys
 import os
 from scipy import interpolate
 import matplotlib.pyplot as plt
+import copy
+from rockpool.timeseries import TSContinuous
+
+def local_lip(ts_x, model, mismatch_model, w_out, mismatch_std = 0.2):
+    N = model.lyrRes.size
+    tau_mem = model.lyrRes.tau_mem
+    if(tau_mem.shape == ()):
+        tau_mem = tau_mem*np.ones((N,))
+    tau_syn_slow = model.lyrRes.tau_syn_r_slow
+    if(tau_syn_slow.shape == ()):
+        tau_syn_slow = tau_syn_slow*np.ones((N,))
+    v_thresh = model.lyrRes.v_thresh
+    if(v_thresh.shape == ()):
+        v_thresh = v_thresh*np.ones((N,))
+    
+    mismatch_model.lyrRes.tau_syn_r_slow = np.abs(np.random.randn(N)*mismatch_std*np.mean(model.lyrRes.tau_syn_r_slow) + np.mean(model.lyrRes.tau_syn_r_slow))
+    mismatch_model.lyrRes.tau_mem = np.abs(np.random.randn(N)*mismatch_std*np.mean(model.lyrRes.tau_mem) + np.mean(model.lyrRes.tau_mem))
+    mismatch_model.lyrRes.v_thresh = np.abs(np.random.randn(N)*mismatch_std*np.mean(model.lyrRes.v_thresh) + np.mean(model.lyrRes.v_thresh))
+
+    model.lyrRes.ts_target = ts_x
+    mismatch_model.lyrRes.ts_target = ts_x
+
+    val_model = model.evolve(ts_input=ts_x, verbose=0)
+    val_model_mismatch = mismatch_model.evolve(ts_input=ts_x, verbose=0)
+
+    out_model = val_model["output_layer"].samples.T
+    out_model_mismatch = val_model_mismatch["output_layer"].samples.T
+
+    model.reset_all()
+    mismatch_model.reset_all()
+
+    final_out_model = out_model.T @ w_out
+    final_out_model = filter_1d(final_out_model, alpha=0.99)
+
+    final_out_model_mismatch = out_model_mismatch.T @ w_out
+    final_out_model_mismatch = filter_1d(final_out_model_mismatch, alpha=0.99)
+
+    plt.clf()
+    plt.plot(np.arange(0,1.0,0.001),final_out_model, label="Normal")
+    plt.plot(np.arange(0,1.0,0.001),final_out_model_mismatch, label="Mismatch")
+    plt.legend()
+    plt.draw()
+    plt.pause(0.002)
+
+    theta_star = np.hstack([mismatch_model.lyrRes.tau_mem, mismatch_model.lyrRes.tau_syn_r_slow, mismatch_model.lyrRes.v_thresh])
+    theta = np.hstack([tau_mem,tau_syn_slow, v_thresh])
+
+    assert(theta_star.shape == theta.shape), "Shapes of theta and theta_star not equal"
+
+    top = np.linalg.norm(final_out_model_mismatch-final_out_model, ord=1)
+    btm = np.linalg.norm(theta-theta_star, ord=2)
+
+    return top / btm
+
+
+def approximate_lipschitzness_temporal_xor(X, model, w_out, perturb_steps = 50, mismatch_std = 0.2):
+    """
+    @brief approximate Lipschitz constant for model under mismatch
+    Implements the following formula: (https://arxiv.org/pdf/2003.02460.pdf section 3.1.3)
+    1/N * sum_{i=1}^{N}{max_theta* ||f(x_i,theta)-f(x_i,theta*)||_1 / ||theta-theta*||_inf}
+
+    We approximate the max by by simply applying 'perturb_steps' many times mismatch and take the maximum.
+    We compute theta-theta* by simply stacking stacking the parameters together into one vector.
+
+    We apply mismatch to: tau_syn_slow, tau_mem and Vthresh
+    """
+    mismatch_model = copy.deepcopy(model)
+    local_lipschitz_constants = []
+    for idx,ts_x in enumerate(X):
+        local_lip_estimations = []
+        for _ in range(perturb_steps):
+            local_lip_estimations.append(local_lip(ts_x, model = model, mismatch_model = mismatch_model, w_out = w_out, mismatch_std = 0.2))
+        local_lipschitz_constants.append(np.max(local_lip_estimations))
+    return np.mean(local_lipschitz_constants)
+
 
     
 def generate_xor_sample(total_duration, dt, amplitude=1, use_smooth=True, plot=False):

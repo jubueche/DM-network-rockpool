@@ -4,7 +4,9 @@
 mypy.ini
 /Resources/hey-snips/test*
 /Resources/hey-snips/node*
+/Resources/hey-snips/_*
 /Resources/hey-snips/tmp.json
 /Resources/Plotting
 /Resources/CloudModels
 /cached/
+/Resources/temporal-xor
